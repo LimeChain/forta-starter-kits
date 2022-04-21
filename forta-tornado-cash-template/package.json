@@ -1,9 +1,13 @@
 {
-  "name": "forta-agent-starter",
+  "name": "tornado-cash-funded-account-interaction",
   "version": "0.0.1",
-  "description": "Forta Agent Javascript starter project",
+  "description": "This agent detects when an account that was funded by Tornado Cash interacts with any contract",
   "chainIds": [
-    1
+    1,
+    56,
+    137,
+    10,
+    42161
   ],
   "scripts": {
     "start": "npm run start:dev",
@@ -21,6 +25,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@types/jest": "^27.4.1",
     "forta-agent": "^0.1.3"
   },
   "devDependencies": {

@@ -5,68 +5,72 @@ const {
   createTransactionEvent,
   ethers,
 } = require("forta-agent");
-const {
-  handleTransaction,
-  ERC20_TRANSFER_EVENT,
-  TETHER_ADDRESS,
-  TETHER_DECIMALS,
-} = require("./agent");
+const { provideHandleTranscation } = require("./agent");
 
-describe("high tether transfer agent", () => {
+describe("TornadoCash contract interactions", () => {
   describe("handleTransaction", () => {
     const mockTxEvent = createTransactionEvent({});
     mockTxEvent.filterLog = jest.fn();
-
+    const mockGetAllFundedFromTornadoCash = jest.fn();
+    const mockGetAllInteractedWithContractFundedFromTornadoCash = jest.fn();
+    const handleTransaction = provideHandleTranscation(
+      mockGetAllFundedFromTornadoCash,
+      mockGetAllInteractedWithContractFundedFromTornadoCash
+    );
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();
     });
 
-    it("returns empty findings if there are no Tether transfers", async () => {
-      mockTxEvent.filterLog.mockReturnValue([]);
+    it("returns empty findings if there are no contract interactions with an account that was funded from TornadoCash", async () => {
+      const mockResolvedValueFundedAddress = [];
+      const mockResolvedValueInteractedContract = [];
 
-      const findings = await handleTransaction(mockTxEvent);
+      mockGetAllFundedFromTornadoCash.mockResolvedValueOnce(
+        mockResolvedValueFundedAddress
+      );
+      mockGetAllInteractedWithContractFundedFromTornadoCash.mockResolvedValueOnce(
+        mockResolvedValueInteractedContract
+      );
+
+      const mockTxHash = {
+        blockNumber: 999999,
+      };
+
+      const findings = await handleTransaction(mockTxHash);
 
       expect(findings).toStrictEqual([]);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledWith(
-        ERC20_TRANSFER_EVENT,
-        TETHER_ADDRESS
-      );
+      expect(mockGetAllFundedFromTornadoCash).toHaveBeenCalledTimes(1);
+      expect(
+        mockGetAllInteractedWithContractFundedFromTornadoCash
+      ).toHaveBeenCalledTimes(1);
     });
 
-    it("returns a finding if there is a Tether transfer over 10,000", async () => {
-      const mockTetherTransferEvent = {
-        args: {
-          from: "0xabc",
-          to: "0xdef",
-          value: ethers.BigNumber.from("20000000000"), //20k with 6 decimals
+    it("returns a finding if there is a contract interaction from an address that was funded from TornadoCash", async () => {
+      const mockInteractedTxResult = [
+        {
+          from: "0x123",
+          to: "0x234",
         },
+      ];
+
+      const mockTxHash = {
+        blockNumber: 999999,
       };
-      mockTxEvent.filterLog.mockReturnValue([mockTetherTransferEvent]);
-
-      const findings = await handleTransaction(mockTxEvent);
-
-      const normalizedValue = mockTetherTransferEvent.args.value.div(
-        10 ** TETHER_DECIMALS
+      mockGetAllInteractedWithContractFundedFromTornadoCash.mockResolvedValue(
+        mockInteractedTxResult
       );
+
+      const findings = await handleTransaction(mockTxHash);
+
       expect(findings).toStrictEqual([
         Finding.fromObject({
-          name: "High Tether Transfer",
-          description: `High amount of USDT transferred: ${normalizedValue}`,
-          alertId: "FORTA-1",
+          name: "Tornado Cash funded account interacted with contract",
+          description: `${mockInteractedTxResult[0].from} interacted with contract ${mockInteractedTxResult[0].to}`,
+          alertId: "TORNADO-CASH-FUNDED-ACCOUNT-INTERACTION",
           severity: FindingSeverity.Low,
-          type: FindingType.Info,
-          metadata: {
-            to: mockTetherTransferEvent.args.to,
-            from: mockTetherTransferEvent.args.from,
-          },
+          type: FindingType.Suspicious,
         }),
       ]);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledWith(
-        ERC20_TRANSFER_EVENT,
-        TETHER_ADDRESS
-      );
     });
   });
 });
