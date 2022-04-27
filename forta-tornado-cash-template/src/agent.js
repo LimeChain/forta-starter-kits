@@ -5,19 +5,14 @@ const {
   getEthersProvider,
 } = require("forta-agent");
 const {
-  timeFrameBlocks,
   getContractsByChainId,
   getInitialFundedByTornadoCash,
-  getAPIURL,
+  eventABI,
 } = require("./helper");
 
-const axios = require("axios");
 const ethersProvider = getEthersProvider();
 
 let tornadoCashAddresses;
-let api_url = "";
-
-const apikey = "YOUR API KEY for correct Scanner for CHAIN API";
 
 //Adding one placeholder address for testing purposes
 let fundedByTornadoCash = new Set([
@@ -30,98 +25,41 @@ const initialize = async () => {
   currentChainId = chainId;
   tornadoCashAddresses = await getContractsByChainId(chainId);
   fundedByTornadoCash = await getInitialFundedByTornadoCash(chainId);
-  api_url = await getAPIURL(chainId);
-
-  console.log(tornadoCashAddresses, fundedByTornadoCash, api_url);
 };
 
-function provideHandleTranscation(
-  getAllFundedFromTornadoCash,
-  getAllInteractedWithContractFundedFromTornadoChain
-) {
+function provideHandleTranscation() {
   return async function handleTransaction(txEvent) {
     const findings = [];
+    const filteredForFunded = txEvent.filterLog(eventABI, tornadoCashAddresses);
+    filteredForFunded.forEach((tx) => {
+      const { to } = tx.args;
+      fundedByTornadoCash.add(to);
+    });
 
-    await getAllFundedFromTornadoCash(txEvent);
-    const fundedByInteractedWithContract =
-      await getAllInteractedWithContractFundedFromTornadoChain(txEvent);
+    const allFundedAddressesAsArray = [...fundedByTornadoCash];
+    const interactedAddress = allFundedAddressesAsArray.find(
+      (addr) => addr == txEvent.from
+    );
 
-    if (fundedByInteractedWithContract.length > 0) {
-      fundedByInteractedWithContract.forEach((tx) => {
-        if (tx.contractAddress) {
-          findings.push(
-            Finding.fromObject({
-              name: "Tornado Cash funded account interacted with contract",
-              description: `${tx.from} interacted with contract ${tx.contractAddress}`,
-              alertId: "TORNADO-CASH-FUNDED-ACCOUNT-INTERACTION",
-              severity: FindingSeverity.Low,
-              type: FindingType.Suspicious,
-            })
-          );
-        } else if (tx.to) {
-          findings.push(
-            Finding.fromObject({
-              name: "Tornado Cash funded account interacted with contract",
-              description: `${tx.from} interacted with contract ${tx.to}`,
-              alertId: "TORNADO-CASH-FUNDED-ACCOUNT-INTERACTION",
-              severity: FindingSeverity.Low,
-              type: FindingType.Suspicious,
-            })
-          );
-        }
-      });
+    if (interactedAddress) {
+      if (txEvent.transaction.data.length > 5) {
+        findings.push(
+          Finding.fromObject({
+            name: "Tornado Cash funded account interacted with contract",
+            description: `${interactedAddress} interacted with contract ${txEvent.to}`,
+            alertId: "TORNADO-CASH-FUNDED-ACCOUNT-INTERACTION",
+            severity: FindingSeverity.Low,
+            type: FindingType.Suspicious,
+          })
+        );
+      }
     }
     return findings;
   };
 }
 
-//Here we detect if an account was funded by TornadoCash
-const getAllFundedFromTornadoCash = async (txHash) => {
-  const query = await generateEthScanInternalQuery(txHash);
-  const response = await axios.default.get(query);
-
-  const filtered = response.data.result.filter((tx) =>
-    tornadoCashAddresses.includes(tx.from)
-  );
-
-  filtered.forEach((tx) => {
-    fundedByTornadoCash.add(tx.to);
-  });
-};
-
-//Here we get if an account funded by TornadoCash interacted with a contract
-const getAllInteractedWithContractFundedFromTornadoChain = async (txHash) => {
-  const query = await generateEthScanQuery(txHash);
-  const response = await axios.default.get(query);
-  const allFundedAddressesAsArray = [...fundedByTornadoCash];
-
-  const filteredForInteractions = response.data.result.filter(
-    (tx) =>
-      allFundedAddressesAsArray.includes(tx.from) &&
-      tx.input != "" &&
-      tx.input.length > 5
-  );
-
-  return filteredForInteractions;
-};
-
-//Generating query for internal withdraw transactions
-const generateEthScanInternalQuery = async (txHash) => {
-  const startBlock = txHash.blockNumber - timeFrameBlocks;
-  return `https://${api_url}/api?module=account&action=txlistinternal&address=${txHash.from}&startblock=${startBlock}&endblock=${txHash.blockNumber}&page=1&offset=1000&sort=desc&apikey=${apikey}`;
-};
-
-//Generating query for contract interactions
-const generateEthScanQuery = async (txHash) => {
-  const startBlock = txHash.blockNumber - timeFrameBlocks;
-  return `https://${api_url}/api?module=account&action=txlist&address=${txHash.from}&startblock=${startBlock}&endblock=latest&page=1&offset=1000&sort=desc&apikey=${apikey}`;
-};
-
 module.exports = {
   initialize,
-  handleTransaction: provideHandleTranscation(
-    getAllFundedFromTornadoCash,
-    getAllInteractedWithContractFundedFromTornadoChain
-  ),
+  handleTransaction: provideHandleTranscation(),
   provideHandleTranscation,
 };

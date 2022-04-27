@@ -11,61 +11,43 @@ describe("TornadoCash contract interactions", () => {
   describe("handleTransaction", () => {
     const mockTxEvent = createTransactionEvent({});
     mockTxEvent.filterLog = jest.fn();
-    const mockGetAllFundedFromTornadoCash = jest.fn();
-    const mockGetAllInteractedWithContractFundedFromTornadoCash = jest.fn();
-    const handleTransaction = provideHandleTranscation(
-      mockGetAllFundedFromTornadoCash,
-      mockGetAllInteractedWithContractFundedFromTornadoCash
-    );
+
+    const handleTransaction = provideHandleTranscation();
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();
     });
 
     it("returns empty findings if there are no contract interactions with an account that was funded from TornadoCash", async () => {
-      const mockResolvedValueFundedAddress = [];
-      const mockResolvedValueInteractedContract = [];
-
-      mockGetAllFundedFromTornadoCash.mockResolvedValueOnce(
-        mockResolvedValueFundedAddress
-      );
-      mockGetAllInteractedWithContractFundedFromTornadoCash.mockResolvedValueOnce(
-        mockResolvedValueInteractedContract
-      );
-
-      const mockTxHash = {
-        blockNumber: 999999,
-      };
-
-      const findings = await handleTransaction(mockTxHash);
+      mockTxEvent.filterLog.mockReturnValue([]);
+      mockTxEvent.transaction = {};
+      const findings = await handleTransaction(mockTxEvent);
 
       expect(findings).toStrictEqual([]);
-      expect(mockGetAllFundedFromTornadoCash).toHaveBeenCalledTimes(1);
-      expect(
-        mockGetAllInteractedWithContractFundedFromTornadoCash
-      ).toHaveBeenCalledTimes(1);
+
+      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
     });
 
     it("returns a finding if there is a contract interaction from an address that was funded from TornadoCash", async () => {
-      const mockInteractedTxResult = [
+      mockTxEvent.filterLog.mockReturnValue([
         {
-          from: "0x123",
-          to: "0x234",
+          args: {
+            to: "0xa",
+          },
         },
-      ];
+      ]);
 
-      const mockTxHash = {
-        blockNumber: 999999,
+      mockTxEvent.transaction = {
+        from: "0xa",
+        to: "0xb",
+        data: "0x1234567Test",
       };
-      mockGetAllInteractedWithContractFundedFromTornadoCash.mockResolvedValue(
-        mockInteractedTxResult
-      );
 
-      const findings = await handleTransaction(mockTxHash);
+      const findings = await handleTransaction(mockTxEvent);
 
       expect(findings).toStrictEqual([
         Finding.fromObject({
           name: "Tornado Cash funded account interacted with contract",
-          description: `${mockInteractedTxResult[0].from} interacted with contract ${mockInteractedTxResult[0].to}`,
+          description: `${mockTxEvent.transaction.from} interacted with contract ${mockTxEvent.to}`,
           alertId: "TORNADO-CASH-FUNDED-ACCOUNT-INTERACTION",
           severity: FindingSeverity.Low,
           type: FindingType.Suspicious,

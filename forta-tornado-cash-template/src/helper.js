@@ -36,6 +36,8 @@ const tornadoCashAddressesARBITRUM = [
 module.exports = {
   // 5 per minute * 60 minutes * 24 hours => ~1 day
   timeFrameBlocks: 5 * 60 * 24,
+  eventABI:
+    "event Withdrawal(address to, bytes32 nullifierHash, address indexed relayer, uint256 fee)",
   getContractsByChainId: (chainId) => {
     switch (chainId) {
       case 1:
@@ -62,20 +64,6 @@ module.exports = {
         return new Set(["0x08a83ca9fd882e1ed1477927dee00c2e50320a0a"]);
       case 42161:
         return new Set(["0x543c25dc5e3154fabede4d4a669312f187d56383"]);
-    }
-  },
-  getAPIURL: (chainId) => {
-    switch (chainId) {
-      case 1:
-        return "api.etherscan.io";
-      case 56:
-        return "api.bscscan.com";
-      case 10:
-        return "api-optimistic.etherscan.io";
-      case 137:
-        return "api.polygonscan.com";
-      case 42161:
-        return "api.arbiscan.io";
     }
   },
 };
