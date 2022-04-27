@@ -22,7 +22,6 @@ let fundedByTornadoCash = new Set([
 //Load all properties by chainId
 const initialize = async () => {
   const { chainId } = await ethersProvider.getNetwork();
-  currentChainId = chainId;
   tornadoCashAddresses = await getContractsByChainId(chainId);
   fundedByTornadoCash = await getInitialFundedByTornadoCash(chainId);
 };
@@ -36,17 +35,13 @@ function provideHandleTranscation() {
       fundedByTornadoCash.add(to);
     });
 
-    const allFundedAddressesAsArray = [...fundedByTornadoCash];
-    const interactedAddress = allFundedAddressesAsArray.find(
-      (addr) => addr == txEvent.from
-    );
-
-    if (interactedAddress) {
-      if (txEvent.transaction.data.length > 5) {
+    const hasInteractedWith = fundedByTornadoCash.has(txEvent.from);
+    if (hasInteractedWith) {
+      if (txEvent.transaction.data.length > 10) {
         findings.push(
           Finding.fromObject({
             name: "Tornado Cash funded account interacted with contract",
-            description: `${interactedAddress} interacted with contract ${txEvent.to}`,
+            description: `${txEvent.from} interacted with contract ${txEvent.to}`,
             alertId: "TORNADO-CASH-FUNDED-ACCOUNT-INTERACTION",
             severity: FindingSeverity.Low,
             type: FindingType.Suspicious,
