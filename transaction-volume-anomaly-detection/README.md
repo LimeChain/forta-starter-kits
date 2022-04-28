@@ -1,26 +1,51 @@
-# Large Tether Transfer Agent
+# Transaction Volume Anomaly Detection
 
 ## Description
 
-This agent detects transactions with large Tether transfers
+This agent detects Transactions with Anomalies in Volume
 
 ## Supported Chains
 
 - Ethereum
-- List any other chains this agent can support e.g. BSC
 
 ## Alerts
 
-Describe each of the type of alerts fired by this agent
+- SUCCESSFUL-INTERNAL-TRANSACTION-VOL-INCREASE
 
-- FORTA-1
-  - Fired when a transaction contains a Tether transfer over 10,000 USDT
-  - Severity is always set to "low" (mention any conditions where it could be something else)
-  - Type is always set to "info" (mention any conditions where it could be something else)
-  - Mention any other type of metadata fields included with this alert
+  - Fired when there is unusually high number of successful internal transactions
+  - Severity is always set to "low"
+  - Type is always set to "suspicious"
+  - Metadata fields:
+    - COUNT (Current count of successful transaction)
+    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
+
+- SUCCESSFUL-TRANSACTION-VOL-INCREASE
+
+  - Fired when there is unusually high number of successful transactions
+  - Severity is always set to "low"
+  - Type is always set to "suspicious"
+  - Metadata fields:
+    - COUNT (Current count of successful transaction)
+    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
+
+- FAILED-TRANSACTION-VOL-INCREASE
+
+  - Fired when there is unusually high number of failed transactions
+  - Severity is always set to "high"
+  - Type is always set to "exploit"
+  - Metadata fields:
+    - COUNT (Current count of successful transaction)
+    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
+
+- FAILED-INTERNAL-TRANSACTION-VOL-INCREASE
+
+  - Fired when there is unusually high number of failed internal transactions
+  - Severity is always set to "medium"
+  - Type is always set to "suspicious"
+  - Metadata fields:
+    - COUNT (Current count of successful transaction)
+    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
 
 ## Test Data
 
-The agent behaviour can be verified with the following transactions:
-
-- 0x3a0f757030beec55c22cbc545dd8a844cbbb2e6019461769e1bc3f3a95d10826 (15,000 USDT)
+The agent behaviour can be verified with supplied unit tests

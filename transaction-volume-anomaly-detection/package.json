@@ -1,7 +1,7 @@
 {
-  "name": "forta-agent-starter",
+  "name": "transaction-volume-anomaly-detection",
   "version": "0.0.1",
-  "description": "Forta Agent Javascript starter project",
+  "description": "This agent detects Transactions with Anomalies in Volume",
   "chainIds": [
     1
   ],
