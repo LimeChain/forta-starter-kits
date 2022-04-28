@@ -6,8 +6,6 @@ const {
   ethers,
 } = require("forta-agent");
 
-const RollingMath = require("rolling-math");
-const BigNumber = require("bignumber.js");
 const { bucketBlockSize, contractList } = require("./agent.config");
 const compoundContracts = require("./contracts/compound.json");
 const makerContracts = require("./contracts/maker.json");
@@ -17,6 +15,7 @@ let contractListLocal = [];
 let isRunningJob = false;
 let localFindings = [];
 
+//Here we init the buckets for all contracts that were predefined
 const initialize = async () => {
   const compoundContractValues = Object.values(compoundContracts);
   const makerContractValues = Object.values(makerContracts);
@@ -40,6 +39,7 @@ const initialize = async () => {
   }
 };
 
+//If a tranaction occurs in a block that is compatable with out requirements add it to the TSA (TimeSeriesAnalysis)
 function provideHandleTransaction(
   contractList,
   contractBuckets,
@@ -51,12 +51,30 @@ function provideHandleTransaction(
     if (found != -1) {
       const TimeSeriesAnalysisForTx =
         contractBuckets[found][contractList[found]];
-      const { status } = await getTransactionReceipt(txEvent.hash);
 
-      if (status) {
-        TimeSeriesAnalysisForTx.successfulTx.AddTransaction(txEvent);
-      } else if (!status) {
-        TimeSeriesAnalysisForTx.failedTx.AddTransaction(txEvent);
+      if (txEvent.traces) {
+        if (txEvent.traces.length > 0) {
+          for (let trace of txEvent.traces) {
+            const { status } = await getTransactionReceipt(
+              trace.transactionHash
+            );
+            if (status) {
+              TimeSeriesAnalysisForTx.successfulInternalTx.AddTransaction(
+                txEvent
+              );
+            } else if (!status) {
+              TimeSeriesAnalysisForTx.failedInternalTx.AddTransaction(txEvent);
+            }
+          }
+        }
+      } else {
+        const { status } = await getTransactionReceipt(txEvent.hash);
+
+        if (status) {
+          TimeSeriesAnalysisForTx.successfulTx.AddTransaction(txEvent);
+        } else if (!status) {
+          TimeSeriesAnalysisForTx.failedTx.AddTransaction(txEvent);
+        }
       }
     }
 
@@ -64,6 +82,7 @@ function provideHandleTransaction(
   };
 }
 
+//Here we do a check once per block if there is anything unusual per requirements
 function provideHandleBlock(contractBuckets) {
   return async function handleBlock(blockEvent) {
     let findings = [];
@@ -79,6 +98,8 @@ function provideHandleBlock(contractBuckets) {
     return findings;
   };
 }
+
+//Asynchronously check for findings - needed since there is a lot of evaluations happening in the background
 async function runJob(blockEvent, contractBuckets) {
   isRunningJob = true;
   const findings = [];
@@ -87,6 +108,73 @@ async function runJob(blockEvent, contractBuckets) {
     const TimeSeriesAnalysisSuccessfulTx =
       TimeSeriesAnalysisBuckets[0].successfulTx;
     const TimeSeriesAnalysisFailedTx = TimeSeriesAnalysisBuckets[0].failedTx;
+    const TimeSeriesAnalysisSuccessfulInternalTx =
+      TimeSeriesAnalysisBuckets[0].successfulInternalTx;
+
+    const TimeSeriesAnalysisFailedInternalTx =
+      TimeSeriesAnalysisBuckets[0].failedInternalTx;
+
+    if (TimeSeriesAnalysisSuccessfulInternalTx.IsFull()) {
+      const std =
+        TimeSeriesAnalysisSuccessfulInternalTx.GetStdForLatestBucket();
+
+      const normalMargin =
+        TimeSeriesAnalysisSuccessfulInternalTx.GetNormalMarginOfDifferences();
+
+      if (Math.floor(std) > normalMargin) {
+        const count =
+          TimeSeriesAnalysisSuccessfulInternalTx.GetTotalForLastBucket();
+
+        const baseline =
+          TimeSeriesAnalysisSuccessfulInternalTx.GetBaselineForLastBucket();
+        findings.push(
+          Finding.fromObject({
+            name: "Unusually high number of successful internal transactions",
+            description: `Significant increase of successful internal transactions have been observed from ${
+              blockEvent.blockNumber - bucketBlockSize
+            } to ${blockEvent.blockNumber}`,
+            alertId: "SUCCESSFUL-INTERNAL-TRANSACTION-VOL-INCREASE",
+            severity: FindingSeverity.Low,
+            type: FindingType.Suspicious,
+            metadata: {
+              COUNT: count,
+              EXPECTED_BASELINE: baseline,
+            },
+          })
+        );
+      }
+    }
+
+    if (TimeSeriesAnalysisFailedInternalTx.IsFull()) {
+      const std = TimeSeriesAnalysisFailedInternalTx.GetStdForLatestBucket();
+
+      const normalMargin =
+        TimeSeriesAnalysisFailedInternalTx.GetNormalMarginOfDifferences();
+
+      if (Math.floor(std) > normalMargin) {
+        const count =
+          TimeSeriesAnalysisFailedInternalTx.GetTotalForLastBucket();
+
+        const baseline =
+          TimeSeriesAnalysisFailedInternalTx.GetBaselineForLastBucket();
+        findings.push(
+          Finding.fromObject({
+            name: "Unusually high number of failed internal transactions",
+            description: `Significant increase of failed internal transactions have been observed from ${
+              blockEvent.blockNumber - bucketBlockSize
+            } to ${blockEvent.blockNumber}`,
+            alertId: "FAILED-INTERNAL-TRANSACTION-VOL-INCREASE",
+            severity: FindingSeverity.Medium,
+            type: FindingType.Suspicious,
+            metadata: {
+              COUNT: count,
+              EXPECTED_BASELINE: baseline,
+            },
+          })
+        );
+      }
+    }
+
     if (TimeSeriesAnalysisFailedTx.IsFull()) {
       const std = TimeSeriesAnalysisFailedTx.GetStdForLatestBucket();
 

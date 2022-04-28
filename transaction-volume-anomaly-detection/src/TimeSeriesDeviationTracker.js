@@ -1,11 +1,4 @@
 /*
-1)Create a time series tracker for each finding type
-2)Add all info based on data to the time series tracker
-3)Check for std and std failed
-4)Return data
-*/
-
-/*
   Per block we have x amount of transactions that will get added to the obj
   So RollinMath should add the transactions per block for the blockSize we want to look up to -> for example 5 blocks
   So we add the number to the bucket and we dont need to generate extra buckets per block, instead we need to have 1 rolling math object for the range and it will
@@ -24,13 +17,7 @@ class TimeSeriesAnalysis {
     this.currentBlock = 0;
     this.lastBlock = 0;
     this.total = 0; //total transactions that complete our requirements
-    // this.createBucket();
   }
-
-  //Creates a new bucket after it finished collecting data for the last one
-  // createBucket() {
-  //   this.buckets.push(new RollingMath(this.blockSize));
-  // }
 
   //Here we change the active block number so we know if we need to keep track of txs
   updateBlock(blockNumber) {
@@ -44,13 +31,12 @@ class TimeSeriesAnalysis {
     this.currentBlock = blockNumber;
   }
 
+  //Logic for adding a transaction to the bucket
   AddTransaction(tx) {
     if (tx.block.number != this.currentBlock && this.currentBlock != 0) {
       this.updateBlock(tx.block.number);
       this.AddToBucket(this.total);
-      // if (this.buckets.length != 0) {
-      //   this.createBucket();
-      // }
+
       this.total++;
     } else if (tx.block.number == this.currentBlock) {
       this.total++;
@@ -60,41 +46,11 @@ class TimeSeriesAnalysis {
     }
   }
 
-  //Adds data to the latest bucket and remove the first element if buckets length = timeline
   AddToBucket(data) {
-    // this.RemoveFirstBucketIfNeccesary(); //Remove the first bucket if the dataset is larger than the predefined timeline
-    // if (this.buckets.length != 0) {
-    //   this.total = 0;
-    //   this.buckets[this.buckets.length - 1].addElement(new BigNumber(data)); // add the data (tx count) to the bucket
-    // } else if (this.buckets.length == 0) {
-    //   this.createBucket();
-    //   this.total = 0;
-    //   this.buckets[this.buckets.length - 1].addElement(new BigNumber(data));
-    // }
     this.bucket.addElement(new BigNumber(data));
     this.stdForAll.push(this.bucket.getStandardDeviation().toNumber());
     this.total = 0;
   }
-
-  // RemoveFirstBucketIfNeccesary() {
-  //   const length = this.buckets.length;
-  //   if (length == this.timeline) {
-  //     this.buckets.shift();
-  //   }
-  // }
-
-  // GetStdAvgForAllData() {
-  //   let stdAvg = 0;
-  //   for (let bucket of this.buckets) {
-  //     const std = bucket.getStandardDeviation().toNumber();
-  //     stdAvg + std;
-  //     console.log(std);
-  //   }
-
-  //   stdAvg = stdAvg / this.buckets.length;
-
-  //   return stdAvg;
-  // }
 
   GetStdForLatestBucket() {
     return this.bucket.getStandardDeviation().toNumber();
@@ -108,6 +64,7 @@ class TimeSeriesAnalysis {
     return this.bucket.getAverage().toNumber();
   }
 
+  //We need the SMA to calculate the EMA for all transactions
   SimpleMovingAverage(prices, window, n = Infinity) {
     let index = window - 1;
     const length = prices.length + 1;
@@ -125,26 +82,9 @@ class TimeSeriesAnalysis {
     return simpleMovingAverages;
   }
 
+  //Here we calculate the EMA of the standard deviation and we use this to determine if there is an unusual amount of transactions
   GetNormalMarginOfDifferences() {
     let marginCurrent = 0;
-    // const length = this.stdForAll.length;
-    // const threePointMovingAvg = [];
-    // for (let i = 0; i < length; i++) {
-    //   const first = this.stdForAll[i];
-    //   const second = this.stdForAll[i + 1];
-    //   const third = this.stdForAll[i + 2];
-
-    //   let calc =
-    //     (this.stdForAll[i] + this.stdForAll[i + 1] + this.stdForAll[i + 2]) / 3;
-    //   console.log(calc);
-    //   threePointMovingAvg.push(calc);
-    // }
-
-    // marginCurrent =
-    //   (threePointMovingAvg[length - 1] - threePointMovingAvg[0]) /
-    //     threePointMovingAvg.length -
-    //   1;
-    // marginCurrent = Math.abs(marginCurrent);
 
     let index = this.blockSize - 1;
     const length = this.stdForAll.length;
@@ -169,6 +109,7 @@ class TimeSeriesAnalysis {
     return Math.abs(marginCurrent);
   }
 
+  //Check to see if we have enough data to make calculations
   IsFull() {
     return this.bucket.getNumElements() == this.timeline;
   }
