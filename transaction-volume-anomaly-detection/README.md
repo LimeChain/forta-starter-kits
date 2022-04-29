@@ -7,6 +7,10 @@ This agent detects Transactions with Anomalies in Volume
 ## Supported Chains
 
 - Ethereum
+- Binance Smart Chain
+- Polygon
+- Optimism
+- Arbitrum
 
 ## Alerts
 

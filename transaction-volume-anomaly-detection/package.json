@@ -3,7 +3,11 @@
   "version": "0.0.1",
   "description": "This agent detects Transactions with Anomalies in Volume",
   "chainIds": [
-    1
+    1,
+    56,
+    10,
+    137,
+    42161
   ],
   "scripts": {
     "start": "npm run start:dev",
