@@ -1,26 +1,38 @@
-# Large Tether Transfer Agent
+# Ice Phishing Detection Bot
 
 ## Description
 
-This agent detects transactions with large Tether transfers
+This agent detects high approvals for a specific account and if any assets are transfered
 
 ## Supported Chains
 
 - Ethereum
-- List any other chains this agent can support e.g. BSC
+- Binance Smart Chain
+- Polygon
+- Arbitrum
+- Optimism
 
 ## Alerts
 
-Describe each of the type of alerts fired by this agent
+- ICE-PHISHING-HIGH-NUM-APPROVALS
 
-- FORTA-1
-  - Fired when a transaction contains a Tether transfer over 10,000 USDT
-  - Severity is always set to "low" (mention any conditions where it could be something else)
-  - Type is always set to "info" (mention any conditions where it could be something else)
-  - Mention any other type of metadata fields included with this alert
+  - Fired when an address suddenly has a higher amount of approvals
+  - Severity is always set to "low"
+  - Type is always set to "suspicious"
+  - Metadata fields:
+    - FIRST_TRANSACTION_HASH (the transaction that was first found)
+    - LAST_TRANSACTION_HASH (the tranaction that was found last)
+    - ASSETS_IMPACTED (the amount of assets that were impacted)
+
+- ICE-PHISHING-HIGH-NO-APPROVALS
+  - Fired when an address that was flagged transfers assets from the previously approved list
+  - Severity is always set to "high"
+  - Type is always set to "exploit"
+  - Metadata fields:
+    - FIRST_TRANSACTION_HASH (the transaction that was first found)
+    - LAST_TRANSACTION_HASH (the tranaction that was found last)
+    - ASSETS_IMPACTED (the amount of assets that were impacted)
 
 ## Test Data
 
-The agent behaviour can be verified with the following transactions:
-
-- 0x3a0f757030beec55c22cbc545dd8a844cbbb2e6019461769e1bc3f3a95d10826 (15,000 USDT)
+The agent behaviour can be verified with the provided unit tests

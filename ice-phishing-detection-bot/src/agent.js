@@ -13,84 +13,88 @@ const eventABIs = [
 const addressesTracked = [];
 let isRunning = false;
 let result = [];
-const handleTransaction = async (txEvent) => {
-  const findings = [];
+const provideHandleTransaction = (addressesTracked) => {
+  return async function handleTransaction(txEvent) {
+    const findings = [];
 
-  if (!DEX_AND_CEX_ADDRESSES.includes(txEvent.from)) {
-    const filtered = txEvent.filterLog(eventABIs);
+    if (!DEX_AND_CEX_ADDRESSES.includes(txEvent.from)) {
+      const filtered = txEvent.filterLog(eventABIs);
 
-    for (let tx of filtered) {
-      const { name } = tx;
-      const approvedAsset = txEvent.to;
-      const accountApproved = txEvent.from;
-      const hash = txEvent.hash;
+      for (let tx of filtered) {
+        const { name } = tx;
+        const approvedAsset = txEvent.to;
+        const accountApproved = txEvent.from;
+        const hash = txEvent.hash;
 
-      const addressTrackedObj = {};
-      addressTrackedObj[accountApproved] = new AddressApprovalTracker(
-        accountApproved,
-        ApprovalTimePeriod
-      );
+        const addressTrackedObj = {};
+        addressTrackedObj[accountApproved] = new AddressApprovalTracker(
+          accountApproved,
+          ApprovalTimePeriod
+        );
 
-      const foundIndex = addressesTracked.findIndex(
-        (a) => Object.keys(a) == accountApproved
-      );
+        const foundIndex = addressesTracked.findIndex(
+          (a) => Object.keys(a) == accountApproved
+        );
 
-      if (name == "Approval") {
-        if (foundIndex != -1) {
-          addressesTracked[foundIndex][accountApproved].AddToApprovals(
-            approvedAsset,
-            accountApproved,
-            hash
-          );
-        } else if (foundIndex == -1) {
-          addressTrackedObj[accountApproved].AddToApprovals(
-            approvedAsset,
-            accountApproved,
-            hash
-          );
-          addressesTracked.push(addressTrackedObj);
-        }
-      } else if (name == "Transfer") {
-        if (foundIndex != -1) {
-          addressesTracked[foundIndex][accountApproved].AddToTransfers(
-            accountApproved,
-            approvedAsset,
-            hash
-          );
-        } else if (foundIndex == -1) {
-          addressTrackedObj[accountApproved].AddToTransfers(
-            accountApproved,
-            approvedAsset,
-            hash
-          );
-          addressesTracked.push(addressTrackedObj);
+        if (name == "Approval") {
+          if (foundIndex != -1) {
+            addressesTracked[foundIndex][accountApproved].AddToApprovals(
+              approvedAsset,
+              accountApproved,
+              hash
+            );
+          } else if (foundIndex == -1) {
+            addressTrackedObj[accountApproved].AddToApprovals(
+              approvedAsset,
+              accountApproved,
+              hash
+            );
+            addressesTracked.push(addressTrackedObj);
+          }
+        } else if (name == "Transfer") {
+          if (foundIndex != -1) {
+            addressesTracked[foundIndex][accountApproved].AddToTransfers(
+              accountApproved,
+              approvedAsset,
+              hash
+            );
+          } else if (foundIndex == -1) {
+            addressTrackedObj[accountApproved].AddToTransfers(
+              accountApproved,
+              approvedAsset,
+              hash
+            );
+            addressesTracked.push(addressTrackedObj);
+          }
         }
       }
     }
-  }
 
-  return findings;
+    return findings;
+  };
 };
 
-const handleBlock = async (blockEvent) => {
-  let findings = [];
-  if (!isRunning) {
-    runJob();
-  }
+const provideHandleBlock = (addressesTracked) => {
+  return async function handleBlock(blockEvent) {
+    let findings = [];
+    if (!isRunning) {
+      runJob(addressesTracked);
+    }
 
-  if (result.length > 0) {
-    findings = result;
-    result = [];
-  }
-  return findings;
+    if (result.length > 0) {
+      findings = result;
+      result = [];
+    }
+    return findings;
+  };
 };
-
-const runJob = () => {
+const runJob = (addressesTracked) => {
   isRunning = true;
   for (let addressTracked of addressesTracked) {
     const AddressApprovalTrackerForObj = Object.values(addressTracked)[0];
     const approvalCount = AddressApprovalTrackerForObj.GetApprovalCount();
     const IsPastThreshold = AddressApprovalTrackerForObj.IsPastThreshold();
+
     if (approvalCount > ApprovalThreshold) {
       const { toAddress, startHash, endHash, assetsImpacted, accountApproved } =
         AddressApprovalTrackerForObj.GetApprovedForFlag();
@@ -120,29 +124,32 @@ const runJob = () => {
         assetsImpacted,
         accountsImpacted,
       } = AddressApprovalTrackerForObj.GetApprovedTransferedForFlag();
-
-      result.push(
-        Finding.fromObject({
-          name: "Previously approved assets transferred",
-          description: `${toAddress} transferred ${assetsImpacted} assets from ${accountsImpacted} accounts over period of ${
-            ApprovalTimePeriod / (24 * 60 * 60)
-          } days`,
-          alertId: "ICE-PHISHING-HIGH-NO-APPROVALS",
-          severity: FindingSeverity.High,
-          type: FindingType.Exploit,
-          metadata: {
-            FIRST_TRANSACTION_HASH: startHash,
-            LAST_TRANSACTION_HASH: endHash,
-            ASSETS_IMPACTED: assetsImpacted,
-          },
-        })
-      );
+      if (toAddress) {
+        result.push(
+          Finding.fromObject({
+            name: "Previously approved assets transferred",
+            description: `${toAddress} transferred ${assetsImpacted} assets from ${accountsImpacted} accounts over period of ${
+              ApprovalTimePeriod / (24 * 60 * 60)
+            } days`,
+            alertId: "ICE-PHISHING-HIGH-NO-APPROVALS",
+            severity: FindingSeverity.High,
+            type: FindingType.Exploit,
+            metadata: {
+              FIRST_TRANSACTION_HASH: startHash,
+              LAST_TRANSACTION_HASH: endHash,
+              ASSETS_IMPACTED: assetsImpacted,
+            },
+          })
+        );
+      }
     }
   }
   isRunning = false;
 };
 
 module.exports = {
-  handleTransaction,
-  handleBlock,
+  handleTransaction: provideHandleTransaction(addressesTracked),
+  handleBlock: provideHandleBlock(addressesTracked),
+  provideHandleTransaction,
+  provideHandleBlock,
 };

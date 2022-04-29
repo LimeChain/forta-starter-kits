@@ -1,9 +1,13 @@
 {
-  "name": "forta-agent-starter",
+  "name": "ice-phishing-detection-bot",
   "version": "0.0.1",
-  "description": "Forta Agent Javascript starter project",
+  "description": "This agent detects high approvals for a specific account and if any assets are transfered",
   "chainIds": [
-    1
+    1,
+    137,
+    56,
+    10,
+    42162
   ],
   "scripts": {
     "start": "npm run start:dev",

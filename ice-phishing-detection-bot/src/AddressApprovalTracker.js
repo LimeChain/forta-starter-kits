@@ -129,7 +129,8 @@ class AddressApprovalTracker {
     const DateNow = new Date();
     const timeDiff = (DateNow - DateAdded) / 1000;
     const seconds = Math.round(timeDiff);
-    if (seconds > this.daysTracked) {
+
+    if (seconds >= this.daysTracked) {
       return true;
     }
     return false;
