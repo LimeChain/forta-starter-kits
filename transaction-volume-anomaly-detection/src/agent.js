@@ -3,27 +3,24 @@ const {
   FindingSeverity,
   FindingType,
   getTransactionReceipt,
+  getEthersProvider,
 } = require("forta-agent");
 
-const { bucketBlockSize, contractList } = require("./agent.config");
-const compoundContracts = require("./contracts/compound.json");
-const makerContracts = require("./contracts/maker.json");
+const { bucketBlockSize, getContractsByChainId } = require("./agent.config");
+
 const TimeSeriesAnalysis = require("./TimeSeriesDeviationTracker");
 const contractBuckets = [];
 let contractListLocal = [];
 let isRunningJob = false;
 let localFindings = [];
+const provider = getEthersProvider();
 
 //Here we init the buckets for all contracts that were predefined
 const initialize = async () => {
-  const compoundContractValues = Object.values(compoundContracts);
-  const makerContractValues = Object.values(makerContracts);
-  const contractsFinal = [
-    ...contractList,
-    ...compoundContractValues,
-    ...makerContractValues,
-  ];
-  contractListLocal = contractsFinal;
+  const { chainId } = await provider.getNetwork();
+  const contractList = getContractsByChainId(chainId);
+
+  contractListLocal = contractList;
 
   //Here we create the array containing all TimeSeriesAnalysisFields
   for (let contract of contractListLocal) {
