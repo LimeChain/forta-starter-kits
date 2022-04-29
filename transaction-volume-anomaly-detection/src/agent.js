@@ -6,7 +6,11 @@ const {
   getEthersProvider,
 } = require("forta-agent");
 
-const { bucketBlockSize, getContractsByChainId } = require("./agent.config");
+const {
+  bucketBlockSize,
+  getContractsByChainId,
+  globalSensitivity,
+} = require("./agent.config");
 
 const TimeSeriesAnalysis = require("./TimeSeriesDeviationTracker");
 const contractBuckets = [];
@@ -117,7 +121,7 @@ async function runJob(blockEvent, contractBuckets) {
       const normalMargin =
         TimeSeriesAnalysisSuccessfulInternalTx.GetNormalMarginOfDifferences();
 
-      if (Math.floor(std) > normalMargin) {
+      if (Math.floor(std) * globalSensitivity > normalMargin) {
         const count =
           TimeSeriesAnalysisSuccessfulInternalTx.GetTotalForLastBucket();
 
@@ -147,7 +151,7 @@ async function runJob(blockEvent, contractBuckets) {
       const normalMargin =
         TimeSeriesAnalysisFailedInternalTx.GetNormalMarginOfDifferences();
 
-      if (Math.floor(std) > normalMargin) {
+      if (Math.floor(std) * globalSensitivity > normalMargin) {
         const count =
           TimeSeriesAnalysisFailedInternalTx.GetTotalForLastBucket();
 
@@ -177,7 +181,7 @@ async function runJob(blockEvent, contractBuckets) {
       const normalMargin =
         TimeSeriesAnalysisFailedTx.GetNormalMarginOfDifferences();
 
-      if (Math.floor(std) > normalMargin) {
+      if (Math.floor(std) * globalSensitivity > normalMargin) {
         const count = TimeSeriesAnalysisFailedTx.GetTotalForLastBucket();
 
         const baseline = TimeSeriesAnalysisFailedTx.GetBaselineForLastBucket();
@@ -204,7 +208,7 @@ async function runJob(blockEvent, contractBuckets) {
       const normalMargin =
         TimeSeriesAnalysisSuccessfulTx.GetNormalMarginOfDifferences();
 
-      if (Math.floor(std) > normalMargin) {
+      if (Math.floor(std) * globalSensitivity > normalMargin) {
         const count = TimeSeriesAnalysisSuccessfulTx.GetTotalForLastBucket();
 
         const baseline =

@@ -1,7 +1,15 @@
 const { FindingType, FindingSeverity, Finding } = require("forta-agent");
 const { provideHandleTransaction, provideHandleBlock } = require("./agent");
-
+const moduleTest = require("./agent.config");
 const TimeSeriesAnalysis = require("./TimeSeriesDeviationTracker");
+
+jest.mock("./agent.config.js", () => {
+  const defaultModule = jest.requireActual("./agent.config.js");
+  return {
+    ...defaultModule,
+    globalSensitivity: 1,
+  };
+});
 
 describe("Transaction Volume Anomaly Detection", () => {
   describe("handleTransaction", () => {
