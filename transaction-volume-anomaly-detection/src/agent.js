@@ -3,7 +3,6 @@ const {
   FindingSeverity,
   FindingType,
   getTransactionReceipt,
-  ethers,
 } = require("forta-agent");
 
 const { bucketBlockSize, contractList } = require("./agent.config");

@@ -1,15 +1,5 @@
-const {
-  FindingType,
-  FindingSeverity,
-  Finding,
-  createTransactionEvent,
-  ethers,
-} = require("forta-agent");
-const {
-  provideHandleTransaction,
-  provideHandleBlock,
-  runJob,
-} = require("./agent");
+const { FindingType, FindingSeverity, Finding } = require("forta-agent");
+const { provideHandleTransaction, provideHandleBlock } = require("./agent");
 
 const TimeSeriesAnalysis = require("./TimeSeriesDeviationTracker");
 

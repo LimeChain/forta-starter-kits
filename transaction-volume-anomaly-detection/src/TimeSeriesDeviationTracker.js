@@ -82,7 +82,11 @@ class TimeSeriesAnalysis {
     return simpleMovingAverages;
   }
 
-  //Here we calculate the EMA of the standard deviation and we use this to determine if there is an unusual amount of transactions
+  /*
+    Here we calculate the EMA of the standard deviation and we use this to determine the marginal difference 
+    between the EMA which is used to determin the normal margin that is used to decide if there are unusual amounts of transactions
+    that happen
+  */
   GetNormalMarginOfDifferences() {
     let marginCurrent = 0;
 
