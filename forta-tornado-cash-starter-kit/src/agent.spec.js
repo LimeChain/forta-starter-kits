@@ -3,7 +3,7 @@ const {
   FindingSeverity,
   Finding,
   createTransactionEvent,
-  ethers,
+  getEthersProvider,
 } = require("forta-agent");
 const { provideHandleTranscation } = require("./agent");
 
@@ -11,8 +11,8 @@ describe("TornadoCash contract interactions", () => {
   describe("handleTransaction", () => {
     const mockTxEvent = createTransactionEvent({});
     mockTxEvent.filterLog = jest.fn();
-
-    const handleTransaction = provideHandleTranscation();
+    const mockEthersProvider = { getCode: jest.fn() };
+    const handleTransaction = provideHandleTranscation(mockEthersProvider);
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();
     });
@@ -41,7 +41,7 @@ describe("TornadoCash contract interactions", () => {
         to: "0xb",
         data: "0x1234567Test",
       };
-
+      mockEthersProvider.getCode.mockReturnValue("0x1234");
       const findings = await handleTransaction(mockTxEvent);
 
       expect(findings).toStrictEqual([
