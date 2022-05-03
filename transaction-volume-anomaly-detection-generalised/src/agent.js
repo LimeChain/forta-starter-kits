@@ -3,12 +3,11 @@ const {
   FindingSeverity,
   FindingType,
   getTransactionReceipt,
-  getEthersProvider,
 } = require("forta-agent");
 
 const {
   bucketBlockSize,
-  getContractsByChainId,
+  contractAddresses,
   globalSensitivity,
 } = require("./agent.config");
 
@@ -17,12 +16,10 @@ const contractBuckets = [];
 let contractListLocal = [];
 let isRunningJob = false;
 let localFindings = [];
-const provider = getEthersProvider();
 
 //Here we init the buckets for all contracts that were predefined
 const initialize = async () => {
-  const { chainId } = await provider.getNetwork();
-  const contractList = getContractsByChainId(chainId);
+  const contractList = contractAddresses;
 
   contractListLocal = contractList;
 
