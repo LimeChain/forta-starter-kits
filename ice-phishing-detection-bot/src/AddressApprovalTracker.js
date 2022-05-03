@@ -125,6 +125,9 @@ class AddressApprovalTracker {
 
   IsPastThreshold() {
     const FirstTransfer = this.trackingTransfers[0];
+    if (!FirstTransfer) {
+      return false;
+    }
     const DateAdded = FirstTransfer.transferedDate;
     const DateNow = new Date();
     const timeDiff = (DateNow - DateAdded) / 1000;
