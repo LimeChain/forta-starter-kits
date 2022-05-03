@@ -4,90 +4,76 @@ const {
   FindingType,
   getTransactionReceipt,
   getEthersProvider,
+  ethers,
 } = require("forta-agent");
 
 const {
   bucketBlockSize,
-  getContractsByChainId,
+  commonEventSigs,
   globalSensitivity,
 } = require("./agent.config");
 
+const ADDRESS_ZERO = ethers.constants.AddressZero;
 const TimeSeriesAnalysis = require("./TimeSeriesDeviationTracker");
-const contractBuckets = [];
-let contractListLocal = [];
+const trackerBuckets = [];
 let isRunningJob = false;
 let localFindings = [];
 const provider = getEthersProvider();
 
-//Here we init the buckets for all contracts that were predefined
-const initialize = async () => {
-  const { chainId } = await provider.getNetwork();
-  const contractList = getContractsByChainId(chainId);
+const initialize = () => {
+  createTrackerBucket("0xcE4de6ACDC4a039b9F756FD8fE6a8b3799e773eD");
+};
 
-  contractListLocal = contractList;
+const createTrackerBucket = (address) => {
+  const TimeSeriesAnalysisObj = {};
+  TimeSeriesAnalysisObj[address] = {
+    mintTx: new TimeSeriesAnalysis(address, bucketBlockSize),
+    borrowTx: new TimeSeriesAnalysis(address, bucketBlockSize),
+  };
+  trackerBuckets.push(TimeSeriesAnalysisObj);
+};
 
-  //Here we create the array containing all TimeSeriesAnalysisFields
-  for (let contract of contractListLocal) {
-    const TimeSeriesAnalysisObj = {};
-    TimeSeriesAnalysisObj[contract] = {
-      successfulTx: new TimeSeriesAnalysis(contract, bucketBlockSize),
-      failedTx: new TimeSeriesAnalysis(contract, bucketBlockSize),
-      successfulInternalTx: new TimeSeriesAnalysis(contract, bucketBlockSize),
-      failedInternalTx: new TimeSeriesAnalysis(contract, bucketBlockSize),
-    };
-    contractBuckets.push(TimeSeriesAnalysisObj);
+const alreadyTracked = (address) => {
+  const trackerKeys = [];
+  for (let bucket of trackerBuckets) {
+    const bucketKeys = Object.keys(bucket);
+    trackerKeys.push(...bucketKeys);
   }
+
+  const found = trackerKeys.findIndex((c) => c == address);
+
+  return found;
 };
 
 //If a tranaction occurs in a block that is compatable with out requirements add it to the TSA (TimeSeriesAnalysis)
-function provideHandleTransaction(
-  contractList,
-  contractBuckets,
-  getTransactionReceipt
-) {
+function provideHandleTransaction(trackerBuckets, getTransactionReceipt) {
   return async function handleTransaction(txEvent) {
     const findings = [];
-    const found = contractList.findIndex((c) => c == txEvent.to);
-    if (found != -1) {
-      const TimeSeriesAnalysisForTx =
-        contractBuckets[found][contractList[found]];
+    const filtered = txEvent.filterLog(commonEventSigs);
+    for (let tx of filtered) {
+      const { from, to, value } = tx.args; // These are for the base mint sig which is from the transfer event
 
-      if (txEvent.traces) {
-        if (txEvent.traces.length > 0) {
-          for (let trace of txEvent.traces) {
-            const { status } = await getTransactionReceipt(
-              trace.transactionHash
-            );
-            if (status) {
-              TimeSeriesAnalysisForTx.successfulInternalTx.AddTransaction(
-                txEvent
-              );
-            } else if (!status) {
-              TimeSeriesAnalysisForTx.failedInternalTx.AddTransaction(txEvent);
-            }
-          }
-        }
-      } else {
-        const { status } = await getTransactionReceipt(txEvent.hash);
+      if (from != ADDRESS_ZERO) {
+        const index = alreadyTracked(to);
 
-        if (status) {
-          TimeSeriesAnalysisForTx.successfulTx.AddTransaction(txEvent);
-        } else if (!status) {
-          TimeSeriesAnalysisForTx.failedTx.AddTransaction(txEvent);
+        if (index != -1) {
+          const TimeSeriesAnalysisForTX = trackerBuckets[index][to];
+          TimeSeriesAnalysisForTX.AddTransaction(txEvent);
+        } else if (index == -1) {
+          createTrackerBucket(to);
         }
       }
     }
-
     return findings;
   };
 }
 
 //Here we do a check once per block if there is anything unusual per requirements
-function provideHandleBlock(contractBuckets) {
+function provideHandleBlock(trackerBuckets) {
   return async function handleBlock(blockEvent) {
     let findings = [];
     if (!isRunningJob) {
-      runJob(blockEvent, contractBuckets);
+      runJob(blockEvent, trackerBuckets);
     }
 
     if (localFindings.length > 0) {
@@ -100,10 +86,10 @@ function provideHandleBlock(contractBuckets) {
 }
 
 //Asynchronously check for findings - needed since there is a lot of evaluations happening in the background
-async function runJob(blockEvent, contractBuckets) {
+async function runJob(blockEvent, trackerBuckets) {
   isRunningJob = true;
   const findings = [];
-  for (let TimeSeriesAnalysisBucket of contractBuckets) {
+  for (let TimeSeriesAnalysisBucket of trackerBuckets) {
     const TimeSeriesAnalysisBuckets = Object.values(TimeSeriesAnalysisBucket);
     const TimeSeriesAnalysisSuccessfulTx =
       TimeSeriesAnalysisBuckets[0].successfulTx;
@@ -239,11 +225,10 @@ async function runJob(blockEvent, contractBuckets) {
 module.exports = {
   initialize,
   handleTransaction: provideHandleTransaction(
-    contractListLocal,
-    contractBuckets,
+    trackerBuckets,
     getTransactionReceipt
   ),
-  handleBlock: provideHandleBlock(contractBuckets),
+  handleBlock: provideHandleBlock(trackerBuckets),
   provideHandleTransaction,
   provideHandleBlock,
   runJob,
