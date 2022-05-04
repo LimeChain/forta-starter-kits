@@ -302,6 +302,7 @@ class TimeAnomalyDetection {
       numberOfAssets: this.totalAssetsMinted,
       firstTxHash: this.trackingMints[0].txHash,
       lastTxHash: this.trackingMints[this.trackingMints.length - 1].txHash,
+      baseline: this.GetBaselineForLastMintBucket(),
     };
   }
 
@@ -312,6 +313,7 @@ class TimeAnomalyDetection {
       numberOfAssets: this.totalAssetsBorrowed,
       firstTxHash: this.trackingBorrows[0].txHash,
       lastTxHash: this.trackingBorrows[this.trackingBorrows.length - 1].txHash,
+      baseline: this.GetBaselineForLastBorrowBucket(),
     };
   }
 }

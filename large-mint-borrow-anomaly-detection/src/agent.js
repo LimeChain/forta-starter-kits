@@ -46,18 +46,56 @@ function provideHandleTransaction(trackerBuckets) {
 
     for (let tx of filtered) {
       const { from, to, value } = tx.args; // These are for the base mint sig which is from the transfer event
+      const { _reserve, _user, _amount } = tx.args; // These are for the Lender Pool borrow tx
+      const { minter } = tx.args; // These are for a generic mint event
+      const { borrower } = tx.args; //These are for a generic borrow event
+      if (from) {
+        if (from == ADDRESS_ZERO) {
+          const index = alreadyTracked(to);
 
-      if (from == ADDRESS_ZERO) {
-        const index = alreadyTracked(to);
+          if (index != -1) {
+            const TimeSeriesAnalysisForTX = trackerBuckets[index];
+            TimeSeriesAnalysisForTX.AddMintTx(txEvent);
+          } else if (index == -1) {
+            createTrackerBucket(to);
+            const TimeSeriesAnalysisForTX =
+              trackerBuckets[trackerBuckets.length - 1];
+            TimeSeriesAnalysisForTX.AddMintTx(txEvent);
+          }
+        }
+      } else if (_reserve) {
+        const index = alreadyTracked(_user);
 
+        if (index != -1) {
+          const TimeSeriesAnalysisForTX = trackerBuckets[index];
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
+        } else if (index == -1) {
+          createTrackerBucket(_user);
+          const TimeSeriesAnalysisForTX =
+            trackerBuckets[trackerBuckets.length - 1];
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
+        }
+      } else if (minter) {
+        const index = alreadyTracked(minter);
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
           TimeSeriesAnalysisForTX.AddMintTx(txEvent);
         } else if (index == -1) {
-          createTrackerBucket(to);
+          createTrackerBucket(minter);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
           TimeSeriesAnalysisForTX.AddMintTx(txEvent);
+        }
+      } else if (borrower) {
+        const index = alreadyTracked(borrower);
+        if (index != -1) {
+          const TimeSeriesAnalysisForTX = trackerBuckets[index];
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
+        } else if (index == -1) {
+          createTrackerBucket(borrower);
+          const TimeSeriesAnalysisForTX =
+            trackerBuckets[trackerBuckets.length - 1];
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
         }
       }
     }
@@ -70,7 +108,7 @@ function provideHandleBlock(trackerBuckets) {
   return async function handleBlock(blockEvent) {
     let findings = [];
     if (!isRunningJob) {
-      runJob(blockEvent, trackerBuckets);
+      runJob(trackerBuckets);
     }
 
     if (localFindings.length > 0) {
@@ -83,135 +121,53 @@ function provideHandleBlock(trackerBuckets) {
 }
 
 //Asynchronously check for findings - needed since there is a lot of evaluations happening in the background
-async function runJob(blockEvent, trackerBuckets) {
+async function runJob(trackerBuckets) {
   isRunningJob = true;
   const findings = [];
-  for (let TimeSeriesAnalysisBucket of trackerBuckets) {
-    const TimeSeriesAnalysisBuckets = Object.values(TimeSeriesAnalysisBucket);
-    const TimeSeriesAnalysisSuccessfulTx =
-      TimeSeriesAnalysisBuckets[0].successfulTx;
-    const TimeSeriesAnalysisFailedTx = TimeSeriesAnalysisBuckets[0].failedTx;
-    const TimeSeriesAnalysisSuccessfulInternalTx =
-      TimeSeriesAnalysisBuckets[0].successfulInternalTx;
 
-    const TimeSeriesAnalysisFailedInternalTx =
-      TimeSeriesAnalysisBuckets[0].failedInternalTx;
+  for (let tracker of trackerBuckets) {
+    const mintSTD = tracker.GetSTDLatestForMintBucket();
+    const borrowSTD = tracker.GetSTDLatestForBorrowBucket();
 
-    if (TimeSeriesAnalysisSuccessfulInternalTx.IsFull()) {
-      const std =
-        TimeSeriesAnalysisSuccessfulInternalTx.GetStdForLatestBucket();
+    const normalMarginForMints = tracker.GetMarginForMintBucket();
+    const normalMarginForBorrows = tracker.GetMarginForBorrowBucket();
 
-      const normalMargin =
-        TimeSeriesAnalysisSuccessfulInternalTx.GetNormalMarginOfDifferences();
-
-      if (Math.floor(std) * globalSensitivity > normalMargin) {
-        const count =
-          TimeSeriesAnalysisSuccessfulInternalTx.GetTotalForLastBucket();
-
-        const baseline =
-          TimeSeriesAnalysisSuccessfulInternalTx.GetBaselineForLastBucket();
-        findings.push(
-          Finding.fromObject({
-            name: "Unusually high number of successful internal transactions",
-            description: `Significant increase of successful internal transactions have been observed from ${
-              blockEvent.blockNumber - bucketBlockSize
-            } to ${blockEvent.blockNumber}`,
-            alertId: "SUCCESSFUL-INTERNAL-TRANSACTION-VOL-INCREASE",
-            severity: FindingSeverity.Low,
-            type: FindingType.Suspicious,
-            metadata: {
-              COUNT: count,
-              EXPECTED_BASELINE: baseline,
-            },
-          })
-        );
-      }
+    if (Math.floor(mintSTD) > normalMarginForMints) {
+      const findingData = tracker.GetMintsForFlag();
+      findings.push(
+        Finding.fromObject({
+          name: "Large mint volume",
+          description: `${findingData.from_address} minted an unusually high number of ${findingData.numberOfAssets} assets ${findingData.mintedAssetAccount}`,
+          alertId: "HIGH-MINT-VALUE",
+          severity: FindingSeverity.Medium,
+          type: FindingType.Exploit,
+          metadata: {
+            FIRST_TRANSACTION_HASH: findingData.firstTxHash,
+            LAST_TRANSACTION_HASH: findingData.lastTxHash,
+            ASSET_IMPACTED: findingData.mintedAssetAccount,
+            BASELINE_VOLUME: findingData.baseline,
+          },
+        })
+      );
     }
 
-    if (TimeSeriesAnalysisFailedInternalTx.IsFull()) {
-      const std = TimeSeriesAnalysisFailedInternalTx.GetStdForLatestBucket();
-
-      const normalMargin =
-        TimeSeriesAnalysisFailedInternalTx.GetNormalMarginOfDifferences();
-
-      if (Math.floor(std) * globalSensitivity > normalMargin) {
-        const count =
-          TimeSeriesAnalysisFailedInternalTx.GetTotalForLastBucket();
-
-        const baseline =
-          TimeSeriesAnalysisFailedInternalTx.GetBaselineForLastBucket();
-        findings.push(
-          Finding.fromObject({
-            name: "Unusually high number of failed internal transactions",
-            description: `Significant increase of failed internal transactions have been observed from ${
-              blockEvent.blockNumber - bucketBlockSize
-            } to ${blockEvent.blockNumber}`,
-            alertId: "FAILED-INTERNAL-TRANSACTION-VOL-INCREASE",
-            severity: FindingSeverity.Medium,
-            type: FindingType.Suspicious,
-            metadata: {
-              COUNT: count,
-              EXPECTED_BASELINE: baseline,
-            },
-          })
-        );
-      }
-    }
-
-    if (TimeSeriesAnalysisFailedTx.IsFull()) {
-      const std = TimeSeriesAnalysisFailedTx.GetStdForLatestBucket();
-
-      const normalMargin =
-        TimeSeriesAnalysisFailedTx.GetNormalMarginOfDifferences();
-
-      if (Math.floor(std) * globalSensitivity > normalMargin) {
-        const count = TimeSeriesAnalysisFailedTx.GetTotalForLastBucket();
-
-        const baseline = TimeSeriesAnalysisFailedTx.GetBaselineForLastBucket();
-        findings.push(
-          Finding.fromObject({
-            name: "Unusually high number of failed transactions",
-            description: `Significant increase of failed transactions have been observed from  ${
-              blockEvent.blockNumber - bucketBlockSize
-            } to ${blockEvent.blockNumber}`,
-            alertId: "FAILED-TRANSACTION-VOL-INCREASE",
-            severity: FindingSeverity.High,
-            type: FindingType.Exploit,
-            metadata: {
-              COUNT: count,
-              EXPECTED_BASELINE: baseline,
-            },
-          })
-        );
-      }
-    }
-    if (TimeSeriesAnalysisSuccessfulTx.IsFull()) {
-      const std = TimeSeriesAnalysisSuccessfulTx.GetStdForLatestBucket();
-
-      const normalMargin =
-        TimeSeriesAnalysisSuccessfulTx.GetNormalMarginOfDifferences();
-
-      if (Math.floor(std) * globalSensitivity > normalMargin) {
-        const count = TimeSeriesAnalysisSuccessfulTx.GetTotalForLastBucket();
-
-        const baseline =
-          TimeSeriesAnalysisSuccessfulTx.GetBaselineForLastBucket();
-        findings.push(
-          Finding.fromObject({
-            name: "Unusually high number of successful transactions",
-            description: `Significant increase of successful transactions have been observed from ${
-              blockEvent.blockNumber - bucketBlockSize
-            } to ${blockEvent.blockNumber}`,
-            alertId: "SUCCESSFUL-TRANSACTION-VOL-INCREASE",
-            severity: FindingSeverity.Low,
-            type: FindingType.Suspicious,
-            metadata: {
-              COUNT: count,
-              EXPECTED_BASELINE: baseline,
-            },
-          })
-        );
-      }
+    if (Math.floor(borrowSTD) > normalMarginForBorrows) {
+      const findingData = tracker.GetBorrowsForFlag();
+      findings.push(
+        Finding.fromObject({
+          name: "Large borrow volume",
+          description: `${findingData.from_address} borrowed an unusually high number of ${findingData.numberOfAssets} assets ${findingData.borrowedAssetAccount}`,
+          alertId: "HIGH-BORROW-VALUE",
+          severity: FindingSeverity.Medium,
+          type: FindingType.Exploit,
+          metadata: {
+            FIRST_TRANSACTION_HASH: findingData.firstTxHash,
+            LAST_TRANSACTION_HASH: findingData.lastTxHash,
+            ASSET_IMPACTED: findingData.mintedAssetAccount,
+            BASELINE_VOLUME: findingData.baseline,
+          },
+        })
+      );
     }
   }
 
@@ -225,5 +181,4 @@ module.exports = {
   handleBlock: provideHandleBlock(trackerBuckets),
   provideHandleTransaction,
   provideHandleBlock,
-  runJob,
 };
