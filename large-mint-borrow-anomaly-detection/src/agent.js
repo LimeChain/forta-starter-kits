@@ -2,8 +2,7 @@ const {
   Finding,
   FindingSeverity,
   FindingType,
-  getTransactionReceipt,
-  getEthersProvider,
+
   ethers,
 } = require("forta-agent");
 
@@ -14,30 +13,24 @@ const {
 } = require("./agent.config");
 
 const ADDRESS_ZERO = ethers.constants.AddressZero;
-const TimeSeriesAnalysis = require("./TimeSeriesDeviationTracker");
+const TimeAnomalyDetection = require("./TimeAnomalyDetection");
 const trackerBuckets = [];
 let isRunningJob = false;
 let localFindings = [];
-const provider = getEthersProvider();
 
 const initialize = () => {
   createTrackerBucket("0xcE4de6ACDC4a039b9F756FD8fE6a8b3799e773eD");
 };
 
 const createTrackerBucket = (address) => {
-  const TimeSeriesAnalysisObj = {};
-  TimeSeriesAnalysisObj[address] = {
-    mintTx: new TimeSeriesAnalysis(address, bucketBlockSize),
-    borrowTx: new TimeSeriesAnalysis(address, bucketBlockSize),
-  };
-  trackerBuckets.push(TimeSeriesAnalysisObj);
+  trackerBuckets.push(new TimeAnomalyDetection(address, bucketBlockSize));
 };
 
 const alreadyTracked = (address) => {
   const trackerKeys = [];
   for (let bucket of trackerBuckets) {
-    const bucketKeys = Object.keys(bucket);
-    trackerKeys.push(...bucketKeys);
+    const addressTracked = bucket.addressTracked;
+    trackerKeys.push(addressTracked);
   }
 
   const found = trackerKeys.findIndex((c) => c == address);
@@ -46,21 +39,25 @@ const alreadyTracked = (address) => {
 };
 
 //If a tranaction occurs in a block that is compatable with out requirements add it to the TSA (TimeSeriesAnalysis)
-function provideHandleTransaction(trackerBuckets, getTransactionReceipt) {
+function provideHandleTransaction(trackerBuckets) {
   return async function handleTransaction(txEvent) {
     const findings = [];
     const filtered = txEvent.filterLog(commonEventSigs);
+
     for (let tx of filtered) {
       const { from, to, value } = tx.args; // These are for the base mint sig which is from the transfer event
 
-      if (from != ADDRESS_ZERO) {
+      if (from == ADDRESS_ZERO) {
         const index = alreadyTracked(to);
 
         if (index != -1) {
-          const TimeSeriesAnalysisForTX = trackerBuckets[index][to];
-          TimeSeriesAnalysisForTX.AddTransaction(txEvent);
+          const TimeSeriesAnalysisForTX = trackerBuckets[index];
+          TimeSeriesAnalysisForTX.AddMintTx(txEvent);
         } else if (index == -1) {
           createTrackerBucket(to);
+          const TimeSeriesAnalysisForTX =
+            trackerBuckets[trackerBuckets.length - 1];
+          TimeSeriesAnalysisForTX.AddMintTx(txEvent);
         }
       }
     }
@@ -224,10 +221,7 @@ async function runJob(blockEvent, trackerBuckets) {
 
 module.exports = {
   initialize,
-  handleTransaction: provideHandleTransaction(
-    trackerBuckets,
-    getTransactionReceipt
-  ),
+  handleTransaction: provideHandleTransaction(trackerBuckets),
   handleBlock: provideHandleBlock(trackerBuckets),
   provideHandleTransaction,
   provideHandleBlock,
