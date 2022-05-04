@@ -8,6 +8,7 @@ const {
   getContractsByChainId,
   getInitialFundedByTornadoCash,
   eventABI,
+  addressLimit,
 } = require("./helper");
 
 const ethersProvider = getEthersProvider();
@@ -26,18 +27,27 @@ const initialize = async () => {
   fundedByTornadoCash = await getInitialFundedByTornadoCash(chainId);
 };
 
-function provideHandleTranscation() {
+function provideHandleTranscation(ethersProvider) {
   return async function handleTransaction(txEvent) {
     const findings = [];
     const filteredForFunded = txEvent.filterLog(eventABI, tornadoCashAddresses);
+
     filteredForFunded.forEach((tx) => {
       const { to } = tx.args;
+
+      if (fundedByTornadoCash.size >= addressLimit) {
+        const tempFundedByTornadoCashArray = [...fundedByTornadoCash];
+        tempFundedByTornadoCashArray.shift();
+        fundedByTornadoCash = new Set(tempFundedByTornadoCashArray);
+      }
       fundedByTornadoCash.add(to);
     });
 
     const hasInteractedWith = fundedByTornadoCash.has(txEvent.from);
     if (hasInteractedWith) {
-      if (txEvent.transaction.data.length > 10) {
+      const contractCode = await ethersProvider.getCode(txEvent.to);
+
+      if (contractCode != "0x") {
         findings.push(
           Finding.fromObject({
             name: "Tornado Cash funded account interacted with contract",
@@ -55,6 +65,6 @@ function provideHandleTranscation() {
 
 module.exports = {
   initialize,
-  handleTransaction: provideHandleTranscation(),
+  handleTransaction: provideHandleTranscation(ethersProvider),
   provideHandleTranscation,
 };
