@@ -1,7 +1,7 @@
 {
-  "name": "transaction-volume-anomaly-detection",
+  "name": "large-mint-borrow-volume-anomlay-detection",
   "version": "0.0.1",
-  "description": "This agent detects Transactions with Anomalies in Volume",
+  "description": "This agent detects large mint/borrow anomalies",
   "chainIds": [
     1,
     56,

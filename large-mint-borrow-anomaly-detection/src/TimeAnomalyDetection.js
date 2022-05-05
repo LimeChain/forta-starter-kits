@@ -22,8 +22,8 @@ class TimeAnomalyDetection {
     this.aggregationTimePeriod = aggregationTimePeriod;
     this.mintBucket = new RollingMath(aggregationTimePeriod);
     this.borrowBucket = new RollingMath(aggregationTimePeriod);
-    this.totalMintTransactions = 0;
-    this.totalBorrowTransactions = 0;
+    this.totalMinted = 0;
+    this.totalBorrowed = 0;
     this.MintStandardDeviationsForRange = [];
     this.BorrowStandardDeviationsForRange = [];
     this.mintsForRange = 0;
@@ -37,29 +37,29 @@ class TimeAnomalyDetection {
     this.maxTracked = 10000;
   }
 
-  AddMintTx(tx) {
+  AddMintTx(tx, totalMinted) {
     if (tx.block.number != this.currentBlock && this.currentBlock != 0) {
       this.UpdateBlock(tx.block.number);
       this.AddToMintBucket();
-      this.totalMintTransactions++;
+      this.totalMinted += totalMinted;
     } else if (tx.block.number == this.currentBlock) {
-      this.totalMintTransactions++;
+      this.totalMinted += totalMinted;
     } else if (this.currentBlock == 0) {
-      this.totalMintTransactions++;
+      this.totalMinted += totalMinted;
       this.UpdateCurrentBlock(tx.block.number);
     }
     this.AddToMints(tx.to, tx.from, tx.transaction.hash);
   }
 
-  AddBorrowTx(tx) {
+  AddBorrowTx(tx, totalBorrowed) {
     if (tx.block.number != this.currentBlock && this.currentBlock != 0) {
       this.UpdateBlock(tx.block.number);
       this.AddToBorrowBucket();
-      this.totalBorrowTransactions++;
+      this.totalBorrowed += totalBorrowed;
     } else if (tx.block.number == this.currentBlock) {
-      this.totalBorrowTransactions++;
+      this.totalBorrowed += totalBorrowed;
     } else if (this.currentBlock == 0) {
-      this.totalBorrowTransactions++;
+      this.totalBorrowed += totalBorrowed;
 
       this.UpdateCurrentBlock(tx.block.number);
     }
@@ -158,7 +158,7 @@ class TimeAnomalyDetection {
   }
 
   AddToMintBucket() {
-    this.mintBucket.addElement(new BigNumber(this.totalMintTransactions));
+    this.mintBucket.addElement(new BigNumber(this.totalMinted));
     if (
       this.MintStandardDeviationsForRange.length > this.aggregationTimePeriod
     ) {
@@ -175,11 +175,11 @@ class TimeAnomalyDetection {
       this.mintBucket.getStandardDeviation().toNumber()
     );
 
-    this.totalMintTransactions = 0;
+    this.totalMinted = 0;
   }
 
   AddToBorrowBucket() {
-    this.borrowBucket.addElement(new BigNumber(this.totalBorrowTransactions));
+    this.borrowBucket.addElement(new BigNumber(this.totalBorrowed));
     if (
       this.BorrowStandardDeviationsForRange.length > this.aggregationTimePeriod
     ) {
@@ -196,7 +196,7 @@ class TimeAnomalyDetection {
       this.borrowBucket.getStandardDeviation().toNumber()
     );
 
-    this.totalBorrowTransactions = 0;
+    this.totalBorrowed = 0;
   }
 
   UpdateBlock(blockNumber) {
@@ -305,7 +305,8 @@ class TimeAnomalyDetection {
   GetMintsForFlag() {
     return {
       from_address: this.addressTracked,
-      mintedAssetAccount: this.trackingMints[0].mintedAssetAccount,
+      mintedAssetAccount:
+        this.trackingMints[this.trackingMints.length - 2].mintedAssetAccount,
       numberOfAssets: this.totalAssetsMinted,
       firstTxHash: this.trackingMints[0].txHash,
       lastTxHash: this.trackingMints[this.trackingMints.length - 1].txHash,
@@ -316,10 +317,12 @@ class TimeAnomalyDetection {
   GetBorrowsForFlag() {
     return {
       from_address: this.addressTracked,
-      borrowedAssetAccount: this.trackingBorrows[0].borrowedAssetAccount,
+      borrowedAssetAccount:
+        this.trackingBorrows[this.trackingBorrows.length - 2]
+          .borrowedAssetAccount,
       numberOfAssets: this.totalAssetsBorrowed,
       firstTxHash: this.trackingBorrows[0].txHash,
-      lastTxHash: this.trackingBorrows[this.trackingBorrows.length - 1].txHash,
+      lastTxHash: this.trackingBorrows[this.trackingBorrows.length - 2].txHash,
       baseline: this.GetBaselineForLastBorrowBucket(),
     };
   }

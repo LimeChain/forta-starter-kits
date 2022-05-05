@@ -23,12 +23,12 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    TimeAnomalyDetectionTemp.AddMintTx(mintTxMock);
+    TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
     expect(TimeAnomalyDetectionTemp.totalAssetsMinted).toBe(1);
     expect(TimeAnomalyDetectionTemp.mintsForRange).toBe(1);
     expect(TimeAnomalyDetectionTemp.mintBucket.getNumElements()).toBe(0);
     expect(TimeAnomalyDetectionTemp.currentBlock).toBe(1);
-    expect(TimeAnomalyDetectionTemp.totalMintTransactions).toBe(1);
+    expect(TimeAnomalyDetectionTemp.totalMinted).toBe(1);
   });
 
   it("Should successfully add a borrow tx to the TAD object", () => {
@@ -43,7 +43,7 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock);
+    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock, 1);
     expect(TimeAnomalyDetectionTemp.totalAssetsBorrowed).toBe(1);
     expect(TimeAnomalyDetectionTemp.borrowsForRange).toBe(1);
     expect(TimeAnomalyDetectionTemp.borrowBucket.getNumElements()).toBe(0);
@@ -72,12 +72,12 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock);
-    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockTwo);
+    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock, 1);
+    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockTwo, 1);
 
     expect(TimeAnomalyDetectionTemp.totalAssetsBorrowed).toBe(1);
     expect(TimeAnomalyDetectionTemp.borrowsForRange).toBe(2);
-    expect(TimeAnomalyDetectionTemp.totalBorrowTransactions).toBe(1);
+    expect(TimeAnomalyDetectionTemp.totalBorrowed).toBe(1);
     expect(TimeAnomalyDetectionTemp.borrowBucket.getNumElements()).toBe(1);
     expect(TimeAnomalyDetectionTemp.currentBlock).toBe(2);
   });
@@ -128,16 +128,16 @@ describe("Time Anomaly Detection", () => {
     };
 
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
     }
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo, 1);
     }
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree, 1);
     }
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour, 1);
     }
 
     expect(TimeAnomalyDetectionTemp.GetIsFullMintBucket()).toBe(true);
@@ -189,16 +189,16 @@ describe("Time Anomaly Detection", () => {
     };
 
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock);
+      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock, 1);
     }
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockTwo);
+      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockTwo, 1);
     }
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockThree);
+      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockThree, 1);
     }
     for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockFour);
+      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockFour, 1);
     }
 
     expect(TimeAnomalyDetectionTemp.GetIsFullBorrowBucket()).toBe(true);
@@ -260,16 +260,16 @@ describe("Time Anomaly Detection", () => {
     };
 
     for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
     }
     for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo, 1);
     }
     for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree, 1);
     }
     for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour, 1);
     }
 
     for (let i = 0; i < 15; i++) {
@@ -335,20 +335,20 @@ describe("Time Anomaly Detection", () => {
     };
 
     for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMock);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMock, 1);
     }
     for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockTwo);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockTwo, 1);
     }
     for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockThree);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockThree, 1);
     }
     for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFour);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFour, 1);
     }
 
     for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFive);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFive, 1);
     }
 
     expect(TimeAnomalyDetectionTemp.GetMarginForBorrowBucket()).not.toBe(0);
@@ -410,20 +410,20 @@ describe("Time Anomaly Detection", () => {
     };
 
     for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
     }
     for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo, 1);
     }
     for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree, 1);
     }
     for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour, 1);
     }
 
     for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFive);
+      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFive, 1);
     }
 
     expect(TimeAnomalyDetectionTemp.GetMintsForFlag()).toStrictEqual({
@@ -492,20 +492,20 @@ describe("Time Anomaly Detection", () => {
     };
 
     for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMock);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMock, 1);
     }
     for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockTwo);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockTwo, 1);
     }
     for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockThree);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockThree, 1);
     }
     for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFour);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFour, 1);
     }
 
     for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFive);
+      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFive, 1);
     }
 
     expect(TimeAnomalyDetectionTemp.GetBorrowsForFlag()).toStrictEqual({

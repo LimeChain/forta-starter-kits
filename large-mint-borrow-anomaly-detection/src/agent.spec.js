@@ -56,7 +56,7 @@ describe("Transaction Volume Anomaly Detection", () => {
 
     it("Successfully adds address to tracker bucket on mint transaction with from element in the same block", async () => {
       mockMintTxEvent.filterLog.mockReturnValue([
-        { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        { args: { from: ADDRESS_ZERO, to: "0x1234", value: 10 } },
       ]);
       await handleTransaction(mockMintTxEvent);
 
@@ -66,7 +66,7 @@ describe("Transaction Volume Anomaly Detection", () => {
 
     it("Successfully adds address to tracker bucket on borrow transaction with _reserve element in the same block", async () => {
       mockBorrowEvent.filterLog.mockReturnValue([
-        { args: { _reserve: "0x123", _user: "0x1234" } },
+        { args: { _reserve: "0x123", _user: "0x1234", _amount: 10 } },
       ]);
       await handleTransaction(mockBorrowEvent);
 
@@ -96,14 +96,14 @@ describe("Transaction Volume Anomaly Detection", () => {
 
     it("Successfully keeps track of mint transactions in buckets", async () => {
       mockMintTxEvent.filterLog.mockReturnValue([
-        { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        { args: { from: ADDRESS_ZERO, to: "0x1234", value: 10 } },
       ]);
       await handleTransaction(mockMintTxEvent);
       await handleTransaction(mockMintTxEvent);
 
       expect(mockMintTxEvent.filterLog).toBeCalledTimes(2);
       expect(mockTrackerBuckets.length).toBe(1);
-      expect(mockTrackerBuckets[0].totalMintTransactions).toBe(2);
+      expect(mockTrackerBuckets[0].totalMinted).toBe(20);
       expect(mockTrackerBuckets[0].trackingMints.length).toBe(2);
       expect(mockTrackerBuckets[0].currentBlock).toBe("1234");
       expect(mockTrackerBuckets[0].totalAssetsMinted).toBe(1);
@@ -112,14 +112,14 @@ describe("Transaction Volume Anomaly Detection", () => {
 
     it("Successfully keeps track of borrow transactions in buckets", async () => {
       mockBorrowEvent.filterLog.mockReturnValue([
-        { args: { _reserve: "0x123", borrower: "0x1234" } },
+        { args: { _reserve: "0x123", borrower: "0x1234", _amount: 10 } },
       ]);
       await handleTransaction(mockBorrowEvent);
       await handleTransaction(mockBorrowEvent);
 
       expect(mockBorrowEvent.filterLog).toBeCalledTimes(2);
       expect(mockTrackerBuckets.length).toBe(1);
-      expect(mockTrackerBuckets[0].totalBorrowTransactions).toBe(2);
+      expect(mockTrackerBuckets[0].totalBorrowed).toBe(20);
       expect(mockTrackerBuckets[0].trackingBorrows.length).toBe(2);
       expect(mockTrackerBuckets[0].currentBlock).toBe("1234");
       expect(mockTrackerBuckets[0].totalAssetsBorrowed).toBe(1);
@@ -129,21 +129,21 @@ describe("Transaction Volume Anomaly Detection", () => {
     it("Returns no findings if there are no mint anomalies", async () => {
       for (let i = 0; i < 8; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 1 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
       mockMintTxEvent.block.number = "1235";
       for (let i = 0; i < 9; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 1 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
       mockMintTxEvent.block.number = "1236";
       for (let i = 0; i < 11; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 1 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -151,7 +151,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockMintTxEvent.block.number = "1237";
       for (let i = 0; i < 7; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 1 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -159,7 +159,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockMintTxEvent.block.number = "1238";
       for (let i = 0; i < 8; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 1 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -167,7 +167,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockMintTxEvent.block.number = "1239";
       for (let i = 0; i < 9; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 1 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -180,21 +180,21 @@ describe("Transaction Volume Anomaly Detection", () => {
     it("Returns no findings if there are no borrow anomalies", async () => {
       for (let i = 0; i < 8; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { _reserve: "0x123", borrower: "0x1234" } },
+          { args: { _reserve: "0x123", borrower: "0x1234", _amount: 1 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
       mockBorrowEvent.block.number = "1235";
       for (let i = 0; i < 9; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { _reserve: "0x123", borrower: "0x1234" } },
+          { args: { _reserve: "0x123", borrower: "0x1234", _amount: 1 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
       mockBorrowEvent.block.number = "1236";
       for (let i = 0; i < 11; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { _reserve: "0x123", borrower: "0x1234" } },
+          { args: { _reserve: "0x123", borrower: "0x1234", _amount: 1 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -202,7 +202,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockBorrowEvent.block.number = "1237";
       for (let i = 0; i < 7; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { _reserve: "0x123", borrower: "0x1234" } },
+          { args: { _reserve: "0x123", borrower: "0x1234", _amount: 1 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -210,7 +210,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockBorrowEvent.block.number = "1238";
       for (let i = 0; i < 8; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { _reserve: "0x123", borrower: "0x1234" } },
+          { args: { _reserve: "0x123", borrower: "0x1234", _amount: 1 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -218,7 +218,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockBorrowEvent.block.number = "1239";
       for (let i = 0; i < 9; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { _reserve: "0x123", borrower: "0x1234" } },
+          { args: { _reserve: "0x123", borrower: "0x1234", _amount: 1 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -231,21 +231,21 @@ describe("Transaction Volume Anomaly Detection", () => {
     it("Returns a finding if there are  mint anomalies", async () => {
       for (let i = 0; i < 8; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 10 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
       mockMintTxEvent.block.number = "1235";
       for (let i = 0; i < 9; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 8 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
       mockMintTxEvent.block.number = "1236";
       for (let i = 0; i < 11; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 10 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -253,7 +253,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockMintTxEvent.block.number = "1237";
       for (let i = 0; i < 7; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 11 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -261,7 +261,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockMintTxEvent.block.number = "1238";
       for (let i = 0; i < 800; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 10 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -269,7 +269,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockMintTxEvent.block.number = "1239";
       for (let i = 0; i < 9; i++) {
         mockMintTxEvent.filterLog.mockReturnValue([
-          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+          { args: { from: ADDRESS_ZERO, to: "0x1234", value: 10 } },
         ]);
         await handleTransaction(mockMintTxEvent);
       }
@@ -287,7 +287,7 @@ describe("Transaction Volume Anomaly Detection", () => {
             FIRST_TRANSACTION_HASH: "0x00x",
             LAST_TRANSACTION_HASH: "0x00x",
             ASSET_IMPACTED: "0x123",
-            BASELINE_VOLUME: 167,
+            BASELINE_VOLUME: 1667.8,
           },
         }),
       ]);
@@ -295,21 +295,21 @@ describe("Transaction Volume Anomaly Detection", () => {
     it("Returns a findings if there are  borrow anomalies", async () => {
       for (let i = 0; i < 8; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { borrower: "0x1234" } },
+          { args: { borrower: "0x1234", borrowAmount: 10 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
       mockBorrowEvent.block.number = "1235";
       for (let i = 0; i < 9; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { borrower: "0x1234" } },
+          { args: { borrower: "0x1234", borrowAmount: 10 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
       mockBorrowEvent.block.number = "1236";
       for (let i = 0; i < 11; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { borrower: "0x1234" } },
+          { args: { borrower: "0x1234", borrowAmount: 10 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -317,7 +317,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockBorrowEvent.block.number = "1237";
       for (let i = 0; i < 7; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { borrower: "0x1234" } },
+          { args: { borrower: "0x1234", borrowAmount: 10 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -325,7 +325,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockBorrowEvent.block.number = "1238";
       for (let i = 0; i < 800; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { borrower: "0x1234" } },
+          { args: { borrower: "0x1234", borrowAmount: 10 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -333,7 +333,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       mockBorrowEvent.block.number = "1239";
       for (let i = 0; i < 9; i++) {
         mockBorrowEvent.filterLog.mockReturnValue([
-          { args: { borrower: "0x1234" } },
+          { args: { borrower: "0x1234", borrowAmount: 10 } },
         ]);
         await handleTransaction(mockBorrowEvent);
       }
@@ -351,7 +351,7 @@ describe("Transaction Volume Anomaly Detection", () => {
             FIRST_TRANSACTION_HASH: "0x00x",
             LAST_TRANSACTION_HASH: "0x00x",
             ASSET_IMPACTED: "0x123",
-            BASELINE_VOLUME: 167,
+            BASELINE_VOLUME: 1670,
           },
         }),
       ]);

@@ -1,8 +1,8 @@
-# Transaction Volume Anomaly Detection
+# Large Mint/Borrow Value Anomaly Detection
 
 ## Description
 
-This agent detects Transactions with Anomalies in Volume
+This agent detects Transactions with Anomalies in Volume for Mints/Borrows
 
 ## Supported Chains
 
@@ -14,41 +14,27 @@ This agent detects Transactions with Anomalies in Volume
 
 ## Alerts
 
-- SUCCESSFUL-INTERNAL-TRANSACTION-VOL-INCREASE
+- HIGH-MINT-VALUE
 
-  - Fired when there is unusually high number of successful internal transactions
-  - Severity is always set to "low"
-  - Type is always set to "suspicious"
-  - Metadata fields:
-    - COUNT (Current count of successful transaction)
-    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
-
-- SUCCESSFUL-TRANSACTION-VOL-INCREASE
-
-  - Fired when there is unusually high number of successful transactions
-  - Severity is always set to "low"
-  - Type is always set to "suspicious"
-  - Metadata fields:
-    - COUNT (Current count of successful transaction)
-    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
-
-- FAILED-TRANSACTION-VOL-INCREASE
-
-  - Fired when there is unusually high number of failed transactions
-  - Severity is always set to "high"
+  - Fired when there is unusually high number of mints from an address
+  - Severity is always set to "medium"
   - Type is always set to "exploit"
   - Metadata fields:
-    - COUNT (Current count of successful transaction)
-    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
+    - FIRST_TRANSACTION_HASH (first hash when it occured)
+    - LAST_TRANSACTION_HASH (last hash when it occured)
+    - ASSET_IMPACTED (address of the impaced asset)
+    - BASELINE_VOLUME (the normal volume)
 
-- FAILED-INTERNAL-TRANSACTION-VOL-INCREASE
+- HIGH-BORROW-VALUE
 
-  - Fired when there is unusually high number of failed internal transactions
+  - Fired when there is unusually high number of borrows from an address
   - Severity is always set to "medium"
-  - Type is always set to "suspicious"
+  - Type is always set to "exploit"
   - Metadata fields:
-    - COUNT (Current count of successful transaction)
-    - EXPECTED_BASELINE (Expected baseline count of successful transaction)
+    - FIRST_TRANSACTION_HASH (first hash when it occured)
+    - LAST_TRANSACTION_HASH (last hash when it occured)
+    - ASSET_IMPACTED (address of the impaced asset)
+    - BASELINE_VOLUME (the normal volume)
 
 ## Test Data
 

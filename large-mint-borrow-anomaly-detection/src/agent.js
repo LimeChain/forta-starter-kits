@@ -6,11 +6,7 @@ const {
   ethers,
 } = require("forta-agent");
 
-const {
-  bucketBlockSize,
-  commonEventSigs,
-  globalSensitivity,
-} = require("./agent.config");
+const { bucketBlockSize, commonEventSigs } = require("./agent.config");
 
 const ADDRESS_ZERO = ethers.constants.AddressZero;
 const TimeAnomalyDetection = require("./TimeAnomalyDetection");
@@ -43,20 +39,20 @@ function provideHandleTransaction(trackerBuckets) {
     for (let tx of filtered) {
       const { from, to, value } = tx.args; // These are for the base mint sig which is from the transfer event
       const { _reserve, _user, _amount } = tx.args; // These are for the Lender Pool borrow tx
-      const { minter } = tx.args; // These are for a generic mint event
-      const { borrower } = tx.args; //These are for a generic borrow event
+      const { minter, mintTokens } = tx.args; // These are for a generic mint event
+      const { borrower, borrowAmount } = tx.args; //These are for a generic borrow event
       if (from) {
         if (from == ADDRESS_ZERO) {
           const index = alreadyTracked(to, trackerBuckets);
 
           if (index != -1) {
             const TimeSeriesAnalysisForTX = trackerBuckets[index];
-            TimeSeriesAnalysisForTX.AddMintTx(txEvent);
+            TimeSeriesAnalysisForTX.AddMintTx(txEvent, value);
           } else if (index == -1) {
             createTrackerBucket(to, trackerBuckets);
             const TimeSeriesAnalysisForTX =
               trackerBuckets[trackerBuckets.length - 1];
-            TimeSeriesAnalysisForTX.AddMintTx(txEvent);
+            TimeSeriesAnalysisForTX.AddMintTx(txEvent, value);
           }
         }
       } else if (_reserve) {
@@ -64,34 +60,34 @@ function provideHandleTransaction(trackerBuckets) {
 
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, _amount);
         } else if (index == -1) {
           createTrackerBucket(_user, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, _amount);
         }
       } else if (minter) {
         const index = alreadyTracked(minter, trackerBuckets);
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
-          TimeSeriesAnalysisForTX.AddMintTx(txEvent);
+          TimeSeriesAnalysisForTX.AddMintTx(txEvent, mintTokens);
         } else if (index == -1) {
           createTrackerBucket(minter, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
-          TimeSeriesAnalysisForTX.AddMintTx(txEvent);
+          TimeSeriesAnalysisForTX.AddMintTx(txEvent, mintTokens);
         }
       } else if (borrower) {
         const index = alreadyTracked(borrower, trackerBuckets);
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, borrowAmount);
         } else if (index == -1) {
           createTrackerBucket(borrower, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
+          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, borrowAmount);
         }
       }
     }
