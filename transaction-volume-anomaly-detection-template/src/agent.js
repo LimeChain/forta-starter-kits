@@ -36,7 +36,7 @@ const initialize = async () => {
   }
 };
 
-//If a tranaction occurs in a block that is compatable with out requirements add it to the TSA (TimeSeriesAnalysis)
+//If a transaction occurs in a block that is compatible with our requirements add it to the TSA (TimeSeriesAnalysis)
 function provideHandleTransaction(
   contractList,
   contractBuckets,

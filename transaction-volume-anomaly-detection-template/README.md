@@ -2,7 +2,7 @@
 
 ## Description
 
-This agent detects Transactions with Anomalies in Volume
+This bot detects Transactions with Anomalies in Volume
 
 ## Supported Chains
 
