@@ -6,7 +6,11 @@ const {
   ethers,
 } = require("forta-agent");
 
-const { bucketBlockSize, commonEventSigs } = require("./agent.config");
+const {
+  bucketBlockSize,
+  commonEventSigs,
+  limitTracked,
+} = require("./agent.config");
 
 const ADDRESS_ZERO = ethers.constants.AddressZero;
 const TimeAnomalyDetection = require("./TimeAnomalyDetection");
@@ -15,6 +19,9 @@ let isRunningJob = false;
 let localFindings = [];
 
 const createTrackerBucket = (address, trackerBuckets) => {
+  if (trackerBuckets.length > limitTracked) {
+    trackerBuckets.shift();
+  }
   trackerBuckets.push(new TimeAnomalyDetection(address, bucketBlockSize));
 };
 

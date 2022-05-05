@@ -8,4 +8,5 @@ const commonEventSigs = [
 module.exports = {
   bucketBlockSize: 5,
   commonEventSigs,
+  limitTracked: 10000,
 };
