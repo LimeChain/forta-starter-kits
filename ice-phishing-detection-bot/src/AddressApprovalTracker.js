@@ -30,6 +30,12 @@ class AddressApprovalTracker {
   }
 
   AddToTransfers(assetTransfered, accountTransferedFrom, txHash) {
+    const isFromAlreadyApproved = this.trackingApprovals.find(
+      (t) => t.approvedAssetAccount == accountTransferedFrom
+    );
+
+    if (!isFromAlreadyApproved) return;
+
     const foundAssetTransfered = this.trackingTransfers.find(
       (t) => t.assetTransfered == assetTransfered
     );
