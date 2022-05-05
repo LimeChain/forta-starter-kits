@@ -25,6 +25,7 @@ class AddressApprovalTracker {
       approvalDate,
       txHash,
     };
+
     this.trackingApprovals.push(trackingObject);
     this.CheckForPassedThresholdApprovals();
   }
