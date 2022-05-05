@@ -427,6 +427,7 @@ describe("Time Anomaly Detection", () => {
     }
 
     expect(TimeAnomalyDetectionTemp.GetMintsForFlag()).toStrictEqual({
+      baseline: 10.666666666666666,
       firstTxHash: "0xx0",
       from_address: "0x0",
       lastTxHash: "0xx0",
@@ -508,6 +509,7 @@ describe("Time Anomaly Detection", () => {
     }
 
     expect(TimeAnomalyDetectionTemp.GetBorrowsForFlag()).toStrictEqual({
+      baseline: 10.666666666666666,
       firstTxHash: "0xx0",
       from_address: "0x0",
       lastTxHash: "0xx0",

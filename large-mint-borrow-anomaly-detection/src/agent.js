@@ -18,15 +18,11 @@ const trackerBuckets = [];
 let isRunningJob = false;
 let localFindings = [];
 
-const initialize = () => {
-  createTrackerBucket("0xcE4de6ACDC4a039b9F756FD8fE6a8b3799e773eD");
-};
-
-const createTrackerBucket = (address) => {
+const createTrackerBucket = (address, trackerBuckets) => {
   trackerBuckets.push(new TimeAnomalyDetection(address, bucketBlockSize));
 };
 
-const alreadyTracked = (address) => {
+const alreadyTracked = (address, trackerBuckets) => {
   const trackerKeys = [];
   for (let bucket of trackerBuckets) {
     const addressTracked = bucket.addressTracked;
@@ -51,48 +47,48 @@ function provideHandleTransaction(trackerBuckets) {
       const { borrower } = tx.args; //These are for a generic borrow event
       if (from) {
         if (from == ADDRESS_ZERO) {
-          const index = alreadyTracked(to);
+          const index = alreadyTracked(to, trackerBuckets);
 
           if (index != -1) {
             const TimeSeriesAnalysisForTX = trackerBuckets[index];
             TimeSeriesAnalysisForTX.AddMintTx(txEvent);
           } else if (index == -1) {
-            createTrackerBucket(to);
+            createTrackerBucket(to, trackerBuckets);
             const TimeSeriesAnalysisForTX =
               trackerBuckets[trackerBuckets.length - 1];
             TimeSeriesAnalysisForTX.AddMintTx(txEvent);
           }
         }
       } else if (_reserve) {
-        const index = alreadyTracked(_user);
+        const index = alreadyTracked(_user, trackerBuckets);
 
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
           TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
         } else if (index == -1) {
-          createTrackerBucket(_user);
+          createTrackerBucket(_user, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
           TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
         }
       } else if (minter) {
-        const index = alreadyTracked(minter);
+        const index = alreadyTracked(minter, trackerBuckets);
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
           TimeSeriesAnalysisForTX.AddMintTx(txEvent);
         } else if (index == -1) {
-          createTrackerBucket(minter);
+          createTrackerBucket(minter, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
           TimeSeriesAnalysisForTX.AddMintTx(txEvent);
         }
       } else if (borrower) {
-        const index = alreadyTracked(borrower);
+        const index = alreadyTracked(borrower, trackerBuckets);
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
           TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
         } else if (index == -1) {
-          createTrackerBucket(borrower);
+          createTrackerBucket(borrower, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
           TimeSeriesAnalysisForTX.AddBorrowTx(txEvent);
@@ -131,8 +127,10 @@ async function runJob(trackerBuckets) {
 
     const normalMarginForMints = tracker.GetMarginForMintBucket();
     const normalMarginForBorrows = tracker.GetMarginForBorrowBucket();
+    const isFullMintBucket = tracker.GetIsFullMintBucket();
+    const isFullBorrowBucket = tracker.GetIsFullBorrowBucket();
 
-    if (Math.floor(mintSTD) > normalMarginForMints) {
+    if (Math.floor(mintSTD) > normalMarginForMints && isFullMintBucket) {
       const findingData = tracker.GetMintsForFlag();
       findings.push(
         Finding.fromObject({
@@ -151,7 +149,7 @@ async function runJob(trackerBuckets) {
       );
     }
 
-    if (Math.floor(borrowSTD) > normalMarginForBorrows) {
+    if (Math.floor(borrowSTD) > normalMarginForBorrows && isFullBorrowBucket) {
       const findingData = tracker.GetBorrowsForFlag();
       findings.push(
         Finding.fromObject({
@@ -163,7 +161,7 @@ async function runJob(trackerBuckets) {
           metadata: {
             FIRST_TRANSACTION_HASH: findingData.firstTxHash,
             LAST_TRANSACTION_HASH: findingData.lastTxHash,
-            ASSET_IMPACTED: findingData.mintedAssetAccount,
+            ASSET_IMPACTED: findingData.borrowedAssetAccount,
             BASELINE_VOLUME: findingData.baseline,
           },
         })
@@ -176,7 +174,6 @@ async function runJob(trackerBuckets) {
 }
 
 module.exports = {
-  initialize,
   handleTransaction: provideHandleTransaction(trackerBuckets),
   handleBlock: provideHandleBlock(trackerBuckets),
   provideHandleTransaction,

@@ -1,8 +1,11 @@
-const { FindingType, FindingSeverity, Finding } = require("forta-agent");
+const {
+  FindingType,
+  FindingSeverity,
+  Finding,
+  ethers,
+} = require("forta-agent");
 const { provideHandleTransaction, provideHandleBlock } = require("./agent");
-const moduleTest = require("./agent.config");
-const TimeSeriesAnalysis = require("./TimeSeriesDeviationTracker");
-
+const ADDRESS_ZERO = ethers.constants.AddressZero;
 jest.mock("./agent.config.js", () => {
   const defaultModule = jest.requireActual("./agent.config.js");
   return {
@@ -22,6 +25,7 @@ describe("Transaction Volume Anomaly Detection", () => {
       transaction: {
         hash: "0x00x",
       },
+      filterLog: jest.fn(),
     };
 
     const mockBorrowEvent = {
@@ -33,603 +37,324 @@ describe("Transaction Volume Anomaly Detection", () => {
       transaction: {
         hash: "0x00x",
       },
+      filterLog: jest.fn(),
     };
 
     let mockTrackerBuckets;
-
-    const mockGetTxReceipt = jest.fn();
 
     let handleTransaction;
 
     let handleBlock;
 
     beforeEach(() => {
-      mockGetTxReceipt.mockReset();
+      mockMintTxEvent.filterLog.mockReset();
+      mockBorrowEvent.filterLog.mockReset();
       mockTrackerBuckets = [];
-      handleTransaction = provideHandleTransaction(mockTrackersList);
+      handleTransaction = provideHandleTransaction(mockTrackerBuckets);
       handleBlock = provideHandleBlock(mockTrackerBuckets);
     });
 
-    it("Successfully increments on mint transaction in the same block", async () => {});
+    it("Successfully adds address to tracker bucket on mint transaction with from element in the same block", async () => {
+      mockMintTxEvent.filterLog.mockReturnValue([
+        { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+      ]);
+      await handleTransaction(mockMintTxEvent);
 
-    // it("successfully increments on successful transaction in the same block", async () => {
-    //   mockGetTxReceipt.mockReturnValue({ status: true });
-    //   await handleTransaction(mockTxEvent);
-    //   await handleTransaction(mockTxEvent);
+      expect(mockMintTxEvent.filterLog).toBeCalledTimes(1);
+      expect(mockTrackerBuckets.length).toBe(1);
+    });
 
-    //   expect(mockContractBuckets[0]["0x123"].successfulTx.total).toBe(2);
-    // });
+    it("Successfully adds address to tracker bucket on borrow transaction with _reserve element in the same block", async () => {
+      mockBorrowEvent.filterLog.mockReturnValue([
+        { args: { _reserve: "0x123", _user: "0x1234" } },
+      ]);
+      await handleTransaction(mockBorrowEvent);
 
-    // it("successfully increments on a failed transaction in the same block", async () => {
-    //   mockGetTxReceipt.mockReturnValue({ status: false });
-    //   await handleTransaction(mockTxEvent);
-    //   await handleTransaction(mockTxEvent);
+      expect(mockBorrowEvent.filterLog).toBeCalledTimes(1);
+      expect(mockTrackerBuckets.length).toBe(1);
+    });
 
-    //   expect(mockContractBuckets[0]["0x123"].failedTx.total).toBe(2);
-    // });
+    it("Successfully adds address to tracker bucket on borrow transaction with minter element in the same block", async () => {
+      mockMintTxEvent.filterLog.mockReturnValue([
+        { args: { _reserve: "0x123", minter: "0x1234" } },
+      ]);
+      await handleTransaction(mockMintTxEvent);
 
-    // it("should not return any findings if there are not tx anomalies for successful tx", async () => {
-    //   const mockTxEventTwo = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventThree = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventFour = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventFive = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventSix = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: true });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEvent);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventFour);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventFive);
-    //   }
-    //   for (let i = 0; i < 500; i++) {
-    //     await handleTransaction(mockTxEventSix);
-    //   }
+      expect(mockMintTxEvent.filterLog).toBeCalledTimes(1);
+      expect(mockTrackerBuckets.length).toBe(1);
+    });
 
-    //   const findings = await handleBlock(mockBlockEvent);
-    //   expect(findings).toStrictEqual([]);
-    //   expect(mockContractBuckets[0]["0x123"].successfulTx.IsFull()).toBe(true);
-    // });
+    it("Successfully adds address to tracker bucket on borrow transaction with borrower element in the same block", async () => {
+      mockBorrowEvent.filterLog.mockReturnValue([
+        { args: { _reserve: "0x123", borrower: "0x1234" } },
+      ]);
+      await handleTransaction(mockBorrowEvent);
 
-    // it("should not return any findings if there are not tx anomalies for failed tx", async () => {
-    //   const mockTxEventTwo = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventThree = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventFour = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventFive = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventSix = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: false });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEvent);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventFour);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventFive);
-    //   }
-    //   for (let i = 0; i < 7; i++) {
-    //     await handleTransaction(mockTxEventSix);
-    //   }
+      expect(mockBorrowEvent.filterLog).toBeCalledTimes(1);
+      expect(mockTrackerBuckets.length).toBe(1);
+    });
 
-    //   const findings = await handleBlock(mockBlockEvent);
-    //   expect(findings).toStrictEqual([]);
-    //   expect(mockContractBuckets[0]["0x123"].failedTx.IsFull()).toBe(true);
-    // });
+    it("Successfully keeps track of mint transactions in buckets", async () => {
+      mockMintTxEvent.filterLog.mockReturnValue([
+        { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+      ]);
+      await handleTransaction(mockMintTxEvent);
+      await handleTransaction(mockMintTxEvent);
 
-    // it("should return a finding if there are  tx anomalies for successful tx", async () => {
-    //   const mockTxEventTwo = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventThree = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventFour = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventFive = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventSix = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: true });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEvent);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventFour);
-    //   }
-    //   for (let i = 0; i < 500; i++) {
-    //     await handleTransaction(mockTxEventFive);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventSix);
-    //   }
+      expect(mockMintTxEvent.filterLog).toBeCalledTimes(2);
+      expect(mockTrackerBuckets.length).toBe(1);
+      expect(mockTrackerBuckets[0].totalMintTransactions).toBe(2);
+      expect(mockTrackerBuckets[0].trackingMints.length).toBe(2);
+      expect(mockTrackerBuckets[0].currentBlock).toBe("1234");
+      expect(mockTrackerBuckets[0].totalAssetsMinted).toBe(1);
+      expect(mockTrackerBuckets[0].mintsForRange).toBe(2);
+    });
 
-    //   const findings = await handleBlock(mockBlockEvent);
-    //   expect(findings).toStrictEqual([
-    //     Finding.fromObject({
-    //       name: "Unusually high number of successful transactions",
-    //       description: `Significant increase of successful transactions have been observed from ${
-    //         mockBlockEvent.blockNumber - 5
-    //       } to ${mockBlockEvent.blockNumber}`,
-    //       alertId: "SUCCESSFUL-TRANSACTION-VOL-INCREASE",
-    //       severity: FindingSeverity.Low,
-    //       type: FindingType.Suspicious,
-    //       metadata: {
-    //         COUNT: 520,
-    //         EXPECTED_BASELINE: 104,
-    //       },
-    //     }),
-    //   ]);
-    //   expect(mockContractBuckets[0]["0x123"].successfulTx.IsFull()).toBe(true);
-    // });
-    // it("should return a finding if there are  tx anomalies for failed tx", async () => {
-    //   const mockTxEventTwo = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventThree = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventFour = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventFive = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventSix = {
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: false });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEvent);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventFour);
-    //   }
-    //   for (let i = 0; i < 500; i++) {
-    //     await handleTransaction(mockTxEventFive);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventSix);
-    //   }
+    it("Successfully keeps track of borrow transactions in buckets", async () => {
+      mockBorrowEvent.filterLog.mockReturnValue([
+        { args: { _reserve: "0x123", borrower: "0x1234" } },
+      ]);
+      await handleTransaction(mockBorrowEvent);
+      await handleTransaction(mockBorrowEvent);
 
-    //   const findings = await handleBlock(mockBlockEvent);
-    //   expect(findings).toStrictEqual([
-    //     Finding.fromObject({
-    //       name: "Unusually high number of failed transactions",
-    //       description: `Significant increase of failed transactions have been observed from  ${
-    //         mockBlockEvent.blockNumber - 5
-    //       } to ${mockBlockEvent.blockNumber}`,
-    //       alertId: "FAILED-TRANSACTION-VOL-INCREASE",
-    //       severity: FindingSeverity.High,
-    //       type: FindingType.Exploit,
-    //       metadata: {
-    //         COUNT: 520,
-    //         EXPECTED_BASELINE: 104,
-    //       },
-    //     }),
-    //   ]);
+      expect(mockBorrowEvent.filterLog).toBeCalledTimes(2);
+      expect(mockTrackerBuckets.length).toBe(1);
+      expect(mockTrackerBuckets[0].totalBorrowTransactions).toBe(2);
+      expect(mockTrackerBuckets[0].trackingBorrows.length).toBe(2);
+      expect(mockTrackerBuckets[0].currentBlock).toBe("1234");
+      expect(mockTrackerBuckets[0].totalAssetsBorrowed).toBe(1);
+      expect(mockTrackerBuckets[0].borrowsForRange).toBe(2);
+    });
 
-    //   expect(mockContractBuckets[0]["0x123"].failedTx.IsFull()).toBe(true);
-    // });
+    it("Returns no findings if there are no mint anomalies", async () => {
+      for (let i = 0; i < 8; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+      mockMintTxEvent.block.number = "1235";
+      for (let i = 0; i < 9; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+      mockMintTxEvent.block.number = "1236";
+      for (let i = 0; i < 11; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
 
-    // it("should not return any findings if there are no tx anomalies for successful internal tx", async () => {
-    //   const mockTxEventWithTraces = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesTwo = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesThree = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFour = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFive = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1238",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesSix = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1239",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: true });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTraces);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventWithTracesTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFour);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFive);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesSix);
-    //   }
-    //   mockBlockEvent.blockNumber = "1239";
-    //   const findings = await handleBlock(mockBlockEvent);
+      mockMintTxEvent.block.number = "1237";
+      for (let i = 0; i < 7; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
 
-    //   expect(findings).toStrictEqual([]);
-    //   expect(
-    //     mockContractBuckets[0]["0x123"].successfulInternalTx.IsFull()
-    //   ).toBe(true);
-    // });
+      mockMintTxEvent.block.number = "1238";
+      for (let i = 0; i < 8; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
 
-    // it("should not return any findings if there are no tx anomalies for failed internal tx", async () => {
-    //   const mockTxEventWithTraces = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesTwo = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesThree = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFour = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFive = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1238",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesSix = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1239",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: false });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTraces);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventWithTracesTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFour);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFive);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesSix);
-    //   }
-    //   mockBlockEvent.blockNumber = "1239";
-    //   const findings = await handleBlock(mockBlockEvent);
+      mockMintTxEvent.block.number = "1239";
+      for (let i = 0; i < 9; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
 
-    //   expect(findings).toStrictEqual([]);
-    //   expect(mockContractBuckets[0]["0x123"].failedInternalTx.IsFull()).toBe(
-    //     true
-    //   );
-    // });
+      const findings = await handleBlock();
 
-    // it("should return a finding if there are  tx anomalies for successful internal tx", async () => {
-    //   const mockTxEventWithTraces = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesTwo = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesThree = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFour = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFive = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1238",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesSix = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1239",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: true });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTraces);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventWithTracesTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFour);
-    //   }
-    //   for (let i = 0; i < 500; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFive);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesSix);
-    //   }
-    //   mockBlockEvent.blockNumber = "1239";
-    //   const findings = await handleBlock(mockBlockEvent);
+      expect(findings).toStrictEqual([]);
+    });
 
-    //   expect(findings).toStrictEqual([
-    //     Finding.fromObject({
-    //       name: "Unusually high number of successful internal transactions",
-    //       description: `Significant increase of successful internal transactions have been observed from ${
-    //         mockBlockEvent.blockNumber - 5
-    //       } to ${mockBlockEvent.blockNumber}`,
-    //       alertId: "SUCCESSFUL-INTERNAL-TRANSACTION-VOL-INCREASE",
-    //       severity: FindingSeverity.Low,
-    //       type: FindingType.Suspicious,
-    //       metadata: {
-    //         COUNT: 1040,
-    //         EXPECTED_BASELINE: 208,
-    //       },
-    //     }),
-    //   ]);
-    //   expect(
-    //     mockContractBuckets[0]["0x123"].successfulInternalTx.IsFull()
-    //   ).toBe(true);
-    // });
+    it("Returns no findings if there are no borrow anomalies", async () => {
+      for (let i = 0; i < 8; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { _reserve: "0x123", borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+      mockBorrowEvent.block.number = "1235";
+      for (let i = 0; i < 9; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { _reserve: "0x123", borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+      mockBorrowEvent.block.number = "1236";
+      for (let i = 0; i < 11; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { _reserve: "0x123", borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
 
-    // it("should return a findings if there are tx anomalies for failed internal tx", async () => {
-    //   const mockTxEventWithTraces = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1234",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesTwo = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1235",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesThree = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1236",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFour = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1237",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesFive = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1238",
-    //     },
-    //   };
-    //   const mockTxEventWithTracesSix = {
-    //     traces: mockTraces,
-    //     to: "0x123",
-    //     block: {
-    //       number: "1239",
-    //     },
-    //   };
-    //   mockGetTxReceipt.mockReturnValue({ status: false });
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTraces);
-    //   }
-    //   for (let i = 0; i < 4; i++) {
-    //     await handleTransaction(mockTxEventWithTracesTwo);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesThree);
-    //   }
-    //   for (let i = 0; i < 5; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFour);
-    //   }
-    //   for (let i = 0; i < 500; i++) {
-    //     await handleTransaction(mockTxEventWithTracesFive);
-    //   }
-    //   for (let i = 0; i < 6; i++) {
-    //     await handleTransaction(mockTxEventWithTracesSix);
-    //   }
-    //   mockBlockEvent.blockNumber = "1239";
-    //   const findings = await handleBlock(mockBlockEvent);
+      mockBorrowEvent.block.number = "1237";
+      for (let i = 0; i < 7; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { _reserve: "0x123", borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
 
-    //   expect(findings).toStrictEqual([
-    //     Finding.fromObject({
-    //       name: "Unusually high number of failed internal transactions",
-    //       description: `Significant increase of failed internal transactions have been observed from ${
-    //         mockBlockEvent.blockNumber - 5
-    //       } to ${mockBlockEvent.blockNumber}`,
-    //       alertId: "FAILED-INTERNAL-TRANSACTION-VOL-INCREASE",
-    //       severity: FindingSeverity.Medium,
-    //       type: FindingType.Suspicious,
-    //       metadata: {
-    //         COUNT: 1040,
-    //         EXPECTED_BASELINE: 208,
-    //       },
-    //     }),
-    //   ]);
-    //   expect(mockContractBuckets[0]["0x123"].failedInternalTx.IsFull()).toBe(
-    //     true
-    //   );
-    // });
+      mockBorrowEvent.block.number = "1238";
+      for (let i = 0; i < 8; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { _reserve: "0x123", borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+
+      mockBorrowEvent.block.number = "1239";
+      for (let i = 0; i < 9; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { _reserve: "0x123", borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+
+      const findings = await handleBlock();
+
+      expect(findings).toStrictEqual([]);
+    });
+
+    it("Returns a finding if there are  mint anomalies", async () => {
+      for (let i = 0; i < 8; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+      mockMintTxEvent.block.number = "1235";
+      for (let i = 0; i < 9; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+      mockMintTxEvent.block.number = "1236";
+      for (let i = 0; i < 11; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+
+      mockMintTxEvent.block.number = "1237";
+      for (let i = 0; i < 7; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+
+      mockMintTxEvent.block.number = "1238";
+      for (let i = 0; i < 800; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+
+      mockMintTxEvent.block.number = "1239";
+      for (let i = 0; i < 9; i++) {
+        mockMintTxEvent.filterLog.mockReturnValue([
+          { args: { from: ADDRESS_ZERO, to: "0x1234" } },
+        ]);
+        await handleTransaction(mockMintTxEvent);
+      }
+
+      const findings = await handleBlock();
+
+      expect(findings).toStrictEqual([
+        Finding.fromObject({
+          name: "Large mint volume",
+          description: `0x1234 minted an unusually high number of 1 assets 0x123`,
+          alertId: "HIGH-MINT-VALUE",
+          severity: FindingSeverity.Medium,
+          type: FindingType.Exploit,
+          metadata: {
+            FIRST_TRANSACTION_HASH: "0x00x",
+            LAST_TRANSACTION_HASH: "0x00x",
+            ASSET_IMPACTED: "0x123",
+            BASELINE_VOLUME: 167,
+          },
+        }),
+      ]);
+    });
+    it("Returns a findings if there are  borrow anomalies", async () => {
+      for (let i = 0; i < 8; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+      mockBorrowEvent.block.number = "1235";
+      for (let i = 0; i < 9; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+      mockBorrowEvent.block.number = "1236";
+      for (let i = 0; i < 11; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+
+      mockBorrowEvent.block.number = "1237";
+      for (let i = 0; i < 7; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+
+      mockBorrowEvent.block.number = "1238";
+      for (let i = 0; i < 800; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+
+      mockBorrowEvent.block.number = "1239";
+      for (let i = 0; i < 9; i++) {
+        mockBorrowEvent.filterLog.mockReturnValue([
+          { args: { borrower: "0x1234" } },
+        ]);
+        await handleTransaction(mockBorrowEvent);
+      }
+
+      const findings = await handleBlock();
+
+      expect(findings).toStrictEqual([
+        Finding.fromObject({
+          name: "Large borrow volume",
+          description: `0x1234 borrowed an unusually high number of 1 assets 0x123`,
+          alertId: "HIGH-BORROW-VALUE",
+          severity: FindingSeverity.Medium,
+          type: FindingType.Exploit,
+          metadata: {
+            FIRST_TRANSACTION_HASH: "0x00x",
+            LAST_TRANSACTION_HASH: "0x00x",
+            ASSET_IMPACTED: "0x123",
+            BASELINE_VOLUME: 167,
+          },
+        }),
+      ]);
+    });
   });
 });

@@ -34,6 +34,7 @@ class TimeAnomalyDetection {
     this.trackingBorrows = [];
     this.lastBlock = 0;
     this.currentBlock = 0;
+    this.maxTracked = 10000;
   }
 
   AddMintTx(tx) {
@@ -80,6 +81,9 @@ class TimeAnomalyDetection {
       txHash,
       blockNumber,
     };
+    if (this.trackingMints.length > this.maxTracked) {
+      this.trackingMints.shift();
+    }
     this.trackingMints.push(trackingObject);
     this.CheckForPassedThresholdMints();
   }
@@ -99,6 +103,9 @@ class TimeAnomalyDetection {
       txHash,
       blockNumber,
     };
+    if (this.trackingBorrows.length > this.maxTracked) {
+      this.trackingBorrows.shift();
+    }
     this.trackingBorrows.push(trackingObject);
     this.CheckForPassedThresholdBorrows();
   }
