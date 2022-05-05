@@ -1,7 +1,7 @@
 {
   "name": "transaction-volume-anomaly-detection",
   "version": "0.0.1",
-  "description": "This agent detects Transactions with Anomalies in Volume",
+  "description": "This bot detects Transactions with Anomalies in Volume",
   "chainIds": [
     1,
     56,
