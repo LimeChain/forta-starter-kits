@@ -1,101 +1,105 @@
 const {
-  // Finding,
-  // FindingSeverity,
-  // FindingType,
-  ethers,
+  Finding,
+  FindingSeverity,
+  FindingType,
 } = require('forta-agent');
-const { getFlashloans } = require('./flashloan-detector');
+const { getFlashloans: getFlashloansFn } = require('./flashloan-detector');
+const helperModule = require('./helper');
 
-const zero = ethers.constants.Zero;
+let chain;
+const PERCENTAGE_THRESHOLD = 2;
+
+function provideInitialize(helper) {
+  return async function initialize() {
+    chain = await helper.init();
+  };
+}
+
 const transferEventSig = 'event Transfer(address indexed src, address indexed dst, uint wad)';
 
-const handleTransaction = async (txEvent) => {
-  const findings = [];
-  const initiator = txEvent.from;
+function provideHandleTransaction(helper, getFlashloans) {
+  return async function handleTransaction(txEvent) {
+    const findings = [];
+    const initiator = txEvent.from;
 
-  // const traces = require('./test-traces-cream');
-  const { traces } = txEvent;
+    const flashloans = await getFlashloans(txEvent);
+    if (flashloans.length === 0) return findings;
 
-  const flashloanProtocols = await getFlashloans(txEvent);
-  if (flashloanProtocols.length === 0) return findings;
+    const transferEvents = txEvent.filterLog(transferEventSig);
+    const { traces } = txEvent;
 
-  const transferEvents = txEvent.filterLog(transferEventSig);
+    // For each flashloan calculate the token profits and the borrowed amount
+    const flashloansData = await Promise.all(flashloans.map(async (flashloan) => {
+      const { asset, amount, account } = flashloan;
 
-  flashloanProtocols.forEach((flashloan) => {
-    const { asset, amount, account } = flashloan;
+      let tokenProfits = {};
+      let nativeProfit = helper.zero;
 
-    const profits = {};
-
-    transferEvents.forEach((event) => {
-      const { src: s, dst: d, wad } = event.args;
-      const { address } = event;
-
-      // Convert the source and destination addresses to lower case
-      const src = s.toLowerCase();
-      const dst = d.toLowerCase();
-
-      if (!profits[address]) {
-        profits[address] = zero;
+      if (account !== initiator) {
+        tokenProfits = helper.calculateTokenProfits(transferEvents, account);
+        nativeProfit = helper.calculateNativeProfit(traces, account);
       }
 
-      if (src === account || src === initiator) {
-        console.log('removing', ethers.utils.formatEther(wad));
-        profits[address] = profits[address].sub(wad);
-      }
-      if (dst === account || dst === initiator) {
-        console.log('adding', ethers.utils.formatEther(wad));
-        profits[address] = profits[address].add(wad);
-      }
+      const borrowedAmountUsd = await helper.calculateBorrowedAmount(asset, amount, chain);
+      return { tokenProfits, nativeProfit, borrowedAmountUsd };
+    }));
+
+    // Set the initial total profit to the initiator's profit
+    const totalTokenProfits = helper.calculateTokenProfits(transferEvents, initiator);
+    let totalNativeProfit = helper.calculateNativeProfit(traces, initiator);
+    let totalBorrowed = 0;
+
+    flashloansData.forEach((flashloan) => {
+      const { tokenProfits, nativeProfit, borrowedAmountUsd } = flashloan;
+
+      // Set initial value and add the profit for the asset to the total
+      Object.entries(tokenProfits).forEach(([address, profit]) => {
+        if (!totalTokenProfits[address]) totalTokenProfits[address] = helper.zero;
+        totalTokenProfits[address] = totalTokenProfits[address].add(profit);
+      });
+
+      totalNativeProfit = totalNativeProfit.add(nativeProfit);
+      totalBorrowed += borrowedAmountUsd;
     });
 
-    let nativeProfit = zero;
-    traces.forEach((trace) => {
-      const {
-        from,
-        to,
-        value,
-        callType,
-        balance,
-        refundAddress,
-      } = trace.action;
+    let tokensUsdProfit = 0;
+    let nativeUsdProfit = 0;
 
-      let val;
+    const tokensArray = Object.keys(totalTokenProfits);
 
-      if (value && value !== '0x0' && callType === 'call') {
-        val = ethers.BigNumber.from(value);
-      } else if (balance && refundAddress) {
-        val = ethers.BigNumber.from(balance);
-        if (refundAddress === account || refundAddress === initiator) {
-          console.log('adding native', ethers.utils.formatEther(val));
-          nativeProfit = nativeProfit.add(val);
-        }
-      } else {
-        return;
-      }
+    if (tokensArray.length !== 0) {
+      tokensUsdProfit = await helper.calculateTokensUsdProfit(totalTokenProfits, chain);
+    }
 
-      if (from === account || from === initiator) {
-        console.log('removing native', ethers.utils.formatEther(val));
-        nativeProfit = nativeProfit.sub(val);
-      }
-      if (to === account || to === initiator) {
-        console.log('adding native', ethers.utils.formatEther(val));
-        nativeProfit = nativeProfit.add(val);
-      }
-    });
+    if (!totalNativeProfit.isZero()) {
+      nativeUsdProfit = await helper.calculateNativeUsdProfit(totalNativeProfit, chain);
+    }
 
-    console.log('native', ethers.utils.formatEther(nativeProfit));
-    Object.entries(profits).forEach(([address, profit]) => {
-      console.log(address, ethers.utils.formatEther(profit));
-    });
+    const totalProfit = tokensUsdProfit + nativeUsdProfit;
 
-    // Calculate prices in USD (chainlink or coingecko)
-    // Check if profit > threshold
-    // Alert
-  });
+    if ((totalProfit / totalBorrowed) * 100 > PERCENTAGE_THRESHOLD) {
+      findings.push(Finding.fromObject({
+        name: 'Flashloan detected',
+        description: `${initiator} launched flash loan attack`,
+        alertId: 'FLASHLOAN-ATTACK',
+        severity: FindingSeverity.High,
+        type: FindingType.Exploit,
+        metadata: {
+          tokens: tokensArray,
+        },
+      }));
+    }
 
-  return findings;
-};
+    // Clear all cached prices
+    helper.clearCachedPrices();
+
+    return findings;
+  };
+}
 
 module.exports = {
-  handleTransaction,
+  provideInitialize,
+  initialize: provideInitialize(helperModule),
+  provideHandleTransaction,
+  handleTransaction: provideHandleTransaction(helperModule, getFlashloansFn),
 };
