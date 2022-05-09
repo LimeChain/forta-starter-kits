@@ -20,11 +20,14 @@ describe("Ice phishing detection bot", () => {
   describe("handleTransaction", () => {
     const mockTxEvent = createTransactionEvent({});
     mockTxEvent.filterLog = jest.fn();
-    const mockAddressesTracked = [];
-    const handleTransaction = provideHandleTransaction(mockAddressesTracked);
-    const handleBlock = provideHandleBlock(mockAddressesTracked);
+    let mockAddressesTracked = [];
+    let handleTransaction;
+    let handleBlock;
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();
+      mockAddressesTracked = [];
+      handleTransaction = provideHandleTransaction(mockAddressesTracked);
+      handleBlock = provideHandleBlock(mockAddressesTracked);
     });
 
     it("should successfully add approval to Address Approval tracker for address", async () => {
@@ -45,6 +48,19 @@ describe("Ice phishing detection bot", () => {
     });
 
     it("should successfully add transfer to Address Approval tracker for address", async () => {
+      mockTxEvent.filterLog.mockReturnValue([
+        {
+          name: "Approval",
+        },
+      ]);
+      mockTxEvent.transaction = {
+        from: "0x123",
+        to: "0x1234",
+        hash: "0x0",
+      };
+
+      await handleTransaction(mockTxEvent);
+
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Transfer",
@@ -120,7 +136,7 @@ describe("Ice phishing detection bot", () => {
       expect(findings).toStrictEqual([
         Finding.fromObject({
           name: "High number of accounts granted approvals for digital assets",
-          description: `0x123 obtained transfer approval for 1 assets by 102 accounts over period of 0.00005787037037037037 days`,
+          description: `0x123 obtained transfer approval for 1 assets by 100 accounts over period of 0.00005787037037037037 days`,
           alertId: "ICE-PHISHING-HIGH-NUM-APPROVALS",
           severity: FindingSeverity.Low,
           type: FindingType.Suspicious,
@@ -134,6 +150,20 @@ describe("Ice phishing detection bot", () => {
     });
 
     it("Returns a finding if there are high amount of transfers for digital assets that were approved", async () => {
+      mockTxEvent.filterLog.mockReturnValue([
+        {
+          name: "Approval",
+        },
+      ]);
+      mockTxEvent.transaction = {
+        from: "0x123",
+        to: "0x1234",
+        hash: "0x0",
+      };
+
+      for (let i = 0; i < 100; i++) {
+        await handleTransaction(mockTxEvent);
+      }
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Transfer",
@@ -159,7 +189,7 @@ describe("Ice phishing detection bot", () => {
       expect(findings).toStrictEqual([
         Finding.fromObject({
           name: "High number of accounts granted approvals for digital assets",
-          description: `0x123 obtained transfer approval for 1 assets by 102 accounts over period of 0.00005787037037037037 days`,
+          description: `0x123 obtained transfer approval for 1 assets by 100 accounts over period of 0.00005787037037037037 days`,
           alertId: "ICE-PHISHING-HIGH-NUM-APPROVALS",
           severity: FindingSeverity.Low,
           type: FindingType.Suspicious,

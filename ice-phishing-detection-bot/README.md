@@ -38,5 +38,5 @@ This agent detects high approvals for a specific account and if any assets are t
 The agent behaviour can be verified with the provided unit tests and with the following block range:
 
 - 14703440..14703470 (ethereum)
-- 27870000..27870046 (polygon)
+- 27870000..27870042 (polygon)
 - 17479000..17479022 (bsc)

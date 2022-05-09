@@ -1,3 +1,5 @@
+const { ApprovalThreshold } = require("./agent.config");
+
 class AddressApprovalTracker {
   constructor(address, days) {
     this.addressTracked = address;
@@ -146,6 +148,13 @@ class AddressApprovalTracker {
     return false;
   }
 
+  TransfersWithApprovedAssetsHappened() {
+    return this.trackingTransfers.length > 0 &&
+      this.trackingApprovals.length > ApprovalThreshold
+      ? true
+      : false;
+  }
+
   GetApprovedForFlag() {
     const finalObject = {
       toAddress: this.addressTracked,
@@ -154,7 +163,7 @@ class AddressApprovalTracker {
       assetsImpacted: this.totalAssetsApproved,
       accountApproved: this.totalApprovalsForRange,
     };
-
+    this.trackingApprovals = [];
     return finalObject;
   }
 
@@ -166,7 +175,7 @@ class AddressApprovalTracker {
       assetsImpacted: this.totalAssetsTransfered,
       accountsImpacted: this.totalAccountsTransferedFrom,
     };
-
+    this.trackingTransfers = [];
     return finalObject;
   }
 }

@@ -22,48 +22,34 @@ const provideHandleTransaction = (addressesTracked) => {
 
       for (let tx of filtered) {
         const { name } = tx;
-        const approvedAsset = txEvent.to;
-        const accountApproved = txEvent.from;
+        const to = txEvent.to;
+        const from = txEvent.from;
         const hash = txEvent.hash;
 
-        const addressTrackedObj = {};
-        addressTrackedObj[accountApproved] = new AddressApprovalTracker(
-          accountApproved,
-          ApprovalTimePeriod
+        const foundIndex = addressesTracked.findIndex(
+          (a) => Object.keys(a) == from
         );
 
-        const foundIndex = addressesTracked.findIndex(
-          (a) => Object.keys(a) == accountApproved
-        );
+        const addressTrackedObj = {};
+        if (foundIndex == -1) {
+          addressTrackedObj[from] = new AddressApprovalTracker(
+            from,
+            ApprovalTimePeriod
+          );
+        }
 
         if (name == "Approval") {
           if (foundIndex != -1) {
-            addressesTracked[foundIndex][accountApproved].AddToApprovals(
-              approvedAsset,
-              accountApproved,
-              hash
-            );
+            addressesTracked[foundIndex][from].AddToApprovals(to, from, hash);
           } else if (foundIndex == -1) {
-            addressTrackedObj[accountApproved].AddToApprovals(
-              approvedAsset,
-              accountApproved,
-              hash
-            );
+            addressTrackedObj[from].AddToApprovals(to, from, hash);
             addressesTracked.push(addressTrackedObj);
           }
         } else if (name == "Transfer") {
           if (foundIndex != -1) {
-            addressesTracked[foundIndex][accountApproved].AddToTransfers(
-              accountApproved,
-              approvedAsset,
-              hash
-            );
+            addressesTracked[foundIndex][from].AddToTransfers(from, to, hash);
           } else if (foundIndex == -1) {
-            addressTrackedObj[accountApproved].AddToTransfers(
-              accountApproved,
-              approvedAsset,
-              hash
-            );
+            addressTrackedObj[from].AddToTransfers(from, to, hash);
             addressesTracked.push(addressTrackedObj);
           }
         }
@@ -93,7 +79,8 @@ const runJob = (addressesTracked) => {
   for (let addressTracked of addressesTracked) {
     const AddressApprovalTrackerForObj = Object.values(addressTracked)[0];
     const approvalCount = AddressApprovalTrackerForObj.GetApprovalCount();
-    const IsPastThreshold = AddressApprovalTrackerForObj.IsPastThreshold();
+    const TransfersWithApprovedAssetsHappened =
+      AddressApprovalTrackerForObj.TransfersWithApprovedAssetsHappened();
 
     if (approvalCount > ApprovalThreshold) {
       const { toAddress, startHash, endHash, assetsImpacted, accountApproved } =
@@ -116,7 +103,7 @@ const runJob = (addressesTracked) => {
         })
       );
     }
-    if (IsPastThreshold) {
+    if (TransfersWithApprovedAssetsHappened) {
       const {
         toAddress,
         startHash,
