@@ -90,8 +90,8 @@ function provideHandleTransaction(helper, getFlashloans) {
       }));
     }
 
-    // Clear all cached prices
-    helper.clearCachedPrices();
+    // Clear all cached prices and delete token decimals if the object is too large
+    helper.clear();
 
     return findings;
   };

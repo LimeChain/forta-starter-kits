@@ -1,3 +1,4 @@
+/* eslint-disable no-plusplus */
 const { ethers, getEthersProvider } = require('forta-agent');
 const { Contract, Provider } = require('ethers-multicall');
 const axios = require('axios').default;
@@ -168,7 +169,18 @@ module.exports = {
 
     return tokenAmount * usdPrice;
   },
-  clearCachedPrices() {
+  clear() {
     cachedPrices = {};
+
+    const tokenAddresses = Object.keys(tokenDecimals);
+    const tokensLength = tokenAddresses.Length;
+
+    // If the tokenDecimals object has more than 100K elements
+    // delete elements until it has 90K
+    if (tokensLength > 100_000) {
+      for (let i = 0; i < tokensLength - 90_000; i++) {
+        delete tokenDecimals[tokenAddresses[i]];
+      }
+    }
   },
 };
