@@ -32,7 +32,7 @@ const mockHelper = {
   calculateNativeProfit: jest.fn(),
   calculateTokensUsdProfit: jest.fn(),
   calculateNativeUsdProfit: jest.fn(),
-  clearCachedPrices: () => {},
+  clear: () => {},
 };
 
 describe('flashloan detector agent', () => {
@@ -51,10 +51,6 @@ describe('flashloan detector agent', () => {
       await initialize();
       handleTransaction = provideHandleTransaction(mockHelper, mockGetFlashloans);
     });
-
-    // beforeEach(() => {
-    //   mockTxEvent.filterLog.mockReset();
-    // });
 
     it('returns empty findings if there are no flashloans', async () => {
       mockGetFlashloans.mockResolvedValueOnce([]);
