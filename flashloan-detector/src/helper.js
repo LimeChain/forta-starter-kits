@@ -173,7 +173,7 @@ module.exports = {
     cachedPrices = {};
 
     const tokenAddresses = Object.keys(tokenDecimals);
-    const tokensLength = tokenAddresses.Length;
+    const tokensLength = tokenAddresses.length;
 
     // If the tokenDecimals object has more than 100K elements
     // delete elements until it has 90K
