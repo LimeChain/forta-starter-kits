@@ -1,9 +1,15 @@
 {
-  "name": "forta-flashloan-detector-starter-kit-bot",
+  "name": "flashloan-detection-bot",
   "version": "0.0.1",
   "description": "Forta bot that detects if a transaction contains a flashloan and the borrower made significant profit",
   "chainIds": [
-    1
+    1,
+    10,
+    56,
+    137,
+    250,
+    42161,
+    43114
   ],
   "scripts": {
     "start": "npm run start:dev",

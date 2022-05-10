@@ -40,7 +40,6 @@ module.exports = {
     const { chainId } = await getEthersProvider().getNetwork();
     return getChainByChainId(chainId);
   },
-  getChainByChainId,
   calculateTokenProfits(events, account) {
     const profits = {};
 
