@@ -7,6 +7,12 @@ This bot detects if a transaction contains a flashloan and the borrower made sig
 ## Supported Chains
 
 - Ethereum
+- Optimism
+- Binance Smart Chain
+- Polygon
+- Fantom
+- Arbitrum
+- Avalanche
 
 ## Alerts
 
