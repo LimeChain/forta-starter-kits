@@ -42,7 +42,6 @@ function provideHandleTranscation(ethersProvider) {
       }
 
       fundedByTornadoCash.add(to.toLowerCase());
-      console.log(fundedByTornadoCash);
     });
 
     const hasInteractedWith = fundedByTornadoCash.has(txEvent.from);
