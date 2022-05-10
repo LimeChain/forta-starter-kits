@@ -40,7 +40,8 @@ function provideHandleTranscation(ethersProvider) {
         tempFundedByTornadoCashArray.shift();
         fundedByTornadoCash = new Set(tempFundedByTornadoCashArray);
       }
-      fundedByTornadoCash.add(to);
+
+      fundedByTornadoCash.add(to.toLowerCase());
     });
 
     const hasInteractedWith = fundedByTornadoCash.has(txEvent.from);
