@@ -7,29 +7,29 @@ describe("Address Approval Tracker", () => {
   });
 
   it("Should successfully add to approvals", () => {
-    AddressApprovalTrackerTemp.AddToApprovals("0x123", "0x123", "0x123");
+    AddressApprovalTrackerTemp.addToApprovals("0x123", "0x123", "0x123");
     expect(AddressApprovalTrackerTemp.trackingApprovals.length).toBe(1);
   });
 
   it("Should successfully add to transfers", () => {
-    AddressApprovalTrackerTemp.AddToTransfers("0x123", "0x123", "0x123");
+    AddressApprovalTrackerTemp.addToTransfers("0x123", "0x123", "0x123");
     expect(AddressApprovalTrackerTemp.trackingTransfers.length).toBe(1);
   });
 
   it("Should get approval count", () => {
-    expect(AddressApprovalTrackerTemp.GetApprovalCount()).not.toBe(null);
+    expect(AddressApprovalTrackerTemp.getApprovalCount()).not.toBe(null);
   });
 
   it("Should return false for IsPastThreshold", () => {
-    expect(AddressApprovalTrackerTemp.IsPastThreshold()).toBe(false);
+    expect(AddressApprovalTrackerTemp.isPastThreshold()).toBe(false);
   });
 
   it("Should return an object from get approved for flag", () => {
-    expect(AddressApprovalTrackerTemp.GetApprovedForFlag()).not.toBe(null);
+    expect(AddressApprovalTrackerTemp.getApprovedForFlag()).not.toBe(null);
   });
 
   it("Should return an object from get approved transfered for flag ", () => {
-    expect(AddressApprovalTrackerTemp.GetApprovedTransferedForFlag()).not.toBe(
+    expect(AddressApprovalTrackerTemp.getApprovedTransferedForFlag()).not.toBe(
       null
     );
   });

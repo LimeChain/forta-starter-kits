@@ -10,48 +10,48 @@ const eventABIs = [
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
 
-const addressesTracked = [];
+const addressesTracked = {};
 let isRunning = false;
 let result = [];
 const provideHandleTransaction = (addressesTracked) => {
   return async function handleTransaction(txEvent) {
     const findings = [];
 
-    if (!DEX_AND_CEX_ADDRESSES.includes(txEvent.from)) {
-      const filtered = txEvent.filterLog(eventABIs);
+    const filtered = txEvent.filterLog(eventABIs);
 
-      for (let tx of filtered) {
-        const { name } = tx;
-        const to = txEvent.to;
-        const from = txEvent.from;
-        const hash = txEvent.hash;
+    for (let tx of filtered) {
+      const targetAssetAddress = tx.address;
+      const { name } = tx;
+      const { spender } = tx.args;
+      const { from, to } = tx.args;
+      const hash = txEvent.hash;
+      const targetAddress = spender ? spender : from;
 
-        const foundIndex = addressesTracked.findIndex(
-          (a) => Object.keys(a) == from
+      const exists = addressesTracked.hasOwnProperty(targetAddress);
+
+      if (!exists) {
+        addressesTracked[targetAddress] = new AddressApprovalTracker(
+          spender,
+          ApprovalTimePeriod
         );
+      }
 
-        const addressTrackedObj = {};
-        if (foundIndex == -1) {
-          addressTrackedObj[from] = new AddressApprovalTracker(
-            from,
-            ApprovalTimePeriod
+      if (name == "Approval") {
+        if (!DEX_AND_CEX_ADDRESSES.includes(spender)) {
+          const to = txEvent.to;
+          addressesTracked[targetAddress].addToApprovals(
+            targetAssetAddress,
+            spender,
+            hash
           );
         }
-
-        if (name == "Approval") {
-          if (foundIndex != -1) {
-            addressesTracked[foundIndex][from].AddToApprovals(to, from, hash);
-          } else if (foundIndex == -1) {
-            addressTrackedObj[from].AddToApprovals(to, from, hash);
-            addressesTracked.push(addressTrackedObj);
-          }
-        } else if (name == "Transfer") {
-          if (foundIndex != -1) {
-            addressesTracked[foundIndex][from].AddToTransfers(from, to, hash);
-          } else if (foundIndex == -1) {
-            addressTrackedObj[from].AddToTransfers(from, to, hash);
-            addressesTracked.push(addressTrackedObj);
-          }
+      } else if (name == "Transfer") {
+        if (!DEX_AND_CEX_ADDRESSES.includes(spender)) {
+          addressesTracked[targetAddress].addToTransfers(
+            targetAssetAddress,
+            from,
+            hash
+          );
         }
       }
     }
@@ -76,20 +76,26 @@ const provideHandleBlock = (addressesTracked) => {
 };
 const runJob = (addressesTracked) => {
   isRunning = true;
-  for (let addressTracked of addressesTracked) {
-    const AddressApprovalTrackerForObj = Object.values(addressTracked)[0];
-    const approvalCount = AddressApprovalTrackerForObj.GetApprovalCount();
-    const TransfersWithApprovedAssetsHappened =
-      AddressApprovalTrackerForObj.TransfersWithApprovedAssetsHappened();
 
+  for (let [key, addressTracked] of Object.entries(addressesTracked)) {
+    const AddressApprovalTrackerForObj = addressTracked;
+    const approvalCount = AddressApprovalTrackerForObj.getApprovalCount();
+    const TransfersWithApprovedAssetsHappened =
+      AddressApprovalTrackerForObj.transfersWithApprovedAssetsHappened();
     if (approvalCount > ApprovalThreshold) {
-      const { toAddress, startHash, endHash, assetsImpacted, accountApproved } =
-        AddressApprovalTrackerForObj.GetApprovedForFlag();
+      const {
+        toAddress,
+        startHash,
+        endHash,
+        assetsImpacted,
+        accountApproved,
+        assetsImpactedCount,
+      } = AddressApprovalTrackerForObj.getApprovedForFlag();
 
       result.push(
         Finding.fromObject({
           name: "High number of accounts granted approvals for digital assets",
-          description: `${toAddress} obtained transfer approval for ${assetsImpacted} assets by ${accountApproved} accounts over period of ${
+          description: `${toAddress} obtained transfer approval for ${assetsImpactedCount} assets by ${accountApproved} accounts over period of ${
             ApprovalTimePeriod / (24 * 60 * 60)
           } days`,
           alertId: "ICE-PHISHING-HIGH-NUM-APPROVALS",
@@ -109,13 +115,14 @@ const runJob = (addressesTracked) => {
         startHash,
         endHash,
         assetsImpacted,
+        assetsImpactedCount,
         accountsImpacted,
-      } = AddressApprovalTrackerForObj.GetApprovedTransferedForFlag();
+      } = AddressApprovalTrackerForObj.getApprovedTransferedForFlag();
       if (toAddress) {
         result.push(
           Finding.fromObject({
             name: "Previously approved assets transferred",
-            description: `${toAddress} transferred ${assetsImpacted} assets from ${accountsImpacted} accounts over period of ${
+            description: `${toAddress} transferred ${assetsImpactedCount} assets from ${accountsImpacted} accounts over period of ${
               ApprovalTimePeriod / (24 * 60 * 60)
             } days`,
             alertId: "ICE-PHISHING-HIGH-NO-APPROVALS",

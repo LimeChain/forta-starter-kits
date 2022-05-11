@@ -12,7 +12,7 @@ class AddressApprovalTracker {
     this.totalAccountsTransferedFrom = 0;
   }
 
-  AddToApprovals(approvedAssetAccount, accountApproved, txHash) {
+  addToApprovals(approvedAssetAccount, accountApproved, txHash) {
     this.totalApprovalsForRange++;
     const found = this.trackingApprovals.find(
       (t) => t.approvedAssetAccount == approvedAssetAccount
@@ -29,12 +29,12 @@ class AddressApprovalTracker {
     };
 
     this.trackingApprovals.push(trackingObject);
-    this.CheckForPassedThresholdApprovals();
+    this.checkForPassedThresholdApprovals();
   }
 
-  AddToTransfers(assetTransfered, accountTransferedFrom, txHash) {
+  addToTransfers(assetTransfered, accountTransferedFrom, txHash) {
     const isFromAlreadyApproved = this.trackingApprovals.find(
-      (t) => t.approvedAssetAccount == accountTransferedFrom
+      (t) => t.approvedAssetAccount == assetTransfered
     );
 
     if (!isFromAlreadyApproved) return;
@@ -63,10 +63,10 @@ class AddressApprovalTracker {
     };
 
     this.trackingTransfers.push(trackingObject);
-    this.CheckForPassedThresholdTransfers();
+    this.checkForPassedThresholdTransfers();
   }
 
-  CheckForPassedThresholdApprovals() {
+  checkForPassedThresholdApprovals() {
     const trackedToRemove = [];
     let totalAssetsApprovedRemoved = [];
     for (let t of this.trackingApprovals) {
@@ -94,7 +94,7 @@ class AddressApprovalTracker {
       this.totalAssetsApproved - totalAssetsApprovedRemoved.length;
   }
 
-  CheckForPassedThresholdTransfers() {
+  checkForPassedThresholdTransfers() {
     const trackedToRemove = [];
     let totalAssetsTransferedRemoved = [];
     let totalAccountsTransferedRemoved = [];
@@ -128,11 +128,11 @@ class AddressApprovalTracker {
       this.totalAssetsTransfered - totalAssetsTransferedRemoved.length;
   }
 
-  GetApprovalCount() {
+  getApprovalCount() {
     return this.trackingApprovals.length;
   }
 
-  IsPastThreshold() {
+  isPastThreshold() {
     const FirstTransfer = this.trackingTransfers[0];
     if (!FirstTransfer) {
       return false;
@@ -148,31 +148,47 @@ class AddressApprovalTracker {
     return false;
   }
 
-  TransfersWithApprovedAssetsHappened() {
+  transfersWithApprovedAssetsHappened() {
     return this.trackingTransfers.length > 0 &&
       this.trackingApprovals.length > ApprovalThreshold
       ? true
       : false;
   }
 
-  GetApprovedForFlag() {
+  getApprovedForFlag() {
+    const assetsImpactedArr = this.trackingApprovals.map(
+      (approval) => approval.approvedAssetAccount
+    );
+
+    const assetsImpactedArrFilteredFromDuplicated = assetsImpactedArr.filter(
+      (el, index) => assetsImpactedArr.indexOf(el) == index
+    );
+
     const finalObject = {
       toAddress: this.addressTracked,
       startHash: this.trackingApprovals[0].txHash,
       endHash: this.trackingApprovals[this.trackingApprovals.length - 1].txHash,
-      assetsImpacted: this.totalAssetsApproved,
+      assetsImpacted: assetsImpactedArrFilteredFromDuplicated,
+      assetsImpactedCount: this.totalAssetsApproved,
       accountApproved: this.totalApprovalsForRange,
     };
     this.trackingApprovals = [];
     return finalObject;
   }
 
-  GetApprovedTransferedForFlag() {
+  getApprovedTransferedForFlag() {
+    const assetsTransferedAddr = this.trackingTransfers.map(
+      (transfer) => transfer.assetTransfered
+    );
+    const assetsTransferedFilteredForDuplicates = assetsTransferedAddr.filter(
+      (el, index) => assetsTransferedAddr.indexOf(el) == index
+    );
     const finalObject = {
       toAddress: this.addressTracked,
       startHash: this.trackingTransfers[0].txHash,
       endHash: this.trackingTransfers[this.trackingTransfers.length - 1].txHash,
-      assetsImpacted: this.totalAssetsTransfered,
+      assetsImpacted: assetsTransferedFilteredForDuplicates,
+      assetsImpactedCount: this.totalAssetsTransfered,
       accountsImpacted: this.totalAccountsTransferedFrom,
     };
     this.trackingTransfers = [];

@@ -34,6 +34,10 @@ describe("Ice phishing detection bot", () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Approval",
+          args: {
+            spender: "0x123",
+          },
+          address: "0x1234",
         },
       ]);
       mockTxEvent.transaction = {
@@ -44,13 +48,17 @@ describe("Ice phishing detection bot", () => {
 
       await handleTransaction(mockTxEvent);
 
-      expect(mockAddressesTracked[0]["0x123"].trackingApprovals.length).toBe(1);
+      expect(mockAddressesTracked["0x123"].trackingApprovals.length).toBe(1);
     });
 
     it("should successfully add transfer to Address Approval tracker for address", async () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Approval",
+          args: {
+            spender: "0x123",
+          },
+          address: "0x1234",
         },
       ]);
       mockTxEvent.transaction = {
@@ -64,6 +72,11 @@ describe("Ice phishing detection bot", () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Transfer",
+          args: {
+            from: "0x123",
+            to: "0x1234",
+          },
+          address: "0x1234",
         },
       ]);
       mockTxEvent.transaction = {
@@ -74,13 +87,16 @@ describe("Ice phishing detection bot", () => {
 
       await handleTransaction(mockTxEvent);
 
-      expect(mockAddressesTracked[0]["0x123"].trackingTransfers.length).toBe(1);
+      expect(mockAddressesTracked["0x123"].trackingTransfers.length).toBe(1);
     });
 
     it("Returns no findings if there are no high number of accounts with granted approvals for digital assets", async () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Approval",
+          args: {
+            spender: "0x123",
+          },
         },
       ]);
       mockTxEvent.transaction = {
@@ -100,6 +116,10 @@ describe("Ice phishing detection bot", () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Transfer",
+          args: {
+            from: "0x123",
+            to: "0x1234",
+          },
         },
       ]);
       mockTxEvent.transaction = {
@@ -119,6 +139,10 @@ describe("Ice phishing detection bot", () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Approval",
+          args: {
+            spender: "0x123",
+          },
+          address: "0x1234",
         },
       ]);
       mockTxEvent.transaction = {
@@ -143,7 +167,7 @@ describe("Ice phishing detection bot", () => {
           metadata: {
             FIRST_TRANSACTION_HASH: "0x0",
             LAST_TRANSACTION_HASH: "0x0",
-            ASSETS_IMPACTED: 1,
+            ASSETS_IMPACTED: ["0x1234"],
           },
         }),
       ]);
@@ -153,6 +177,10 @@ describe("Ice phishing detection bot", () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Approval",
+          args: {
+            spender: "0x123",
+          },
+          address: "0x1234",
         },
       ]);
       mockTxEvent.transaction = {
@@ -167,6 +195,11 @@ describe("Ice phishing detection bot", () => {
       mockTxEvent.filterLog.mockReturnValue([
         {
           name: "Transfer",
+          args: {
+            from: "0x123",
+            to: "0x1234",
+          },
+          address: "0x1234",
         },
       ]);
       mockTxEvent.transaction = {
@@ -179,7 +212,7 @@ describe("Ice phishing detection bot", () => {
         await handleTransaction(mockTxEvent);
       }
       jest
-        .spyOn(AddressApprovalTracker.prototype, "IsPastThreshold")
+        .spyOn(AddressApprovalTracker.prototype, "isPastThreshold")
         .mockImplementation(() => {
           return true;
         });
@@ -196,7 +229,7 @@ describe("Ice phishing detection bot", () => {
           metadata: {
             FIRST_TRANSACTION_HASH: "0x0",
             LAST_TRANSACTION_HASH: "0x0",
-            ASSETS_IMPACTED: 1,
+            ASSETS_IMPACTED: ["0x1234"],
           },
         }),
         Finding.fromObject({
@@ -208,7 +241,7 @@ describe("Ice phishing detection bot", () => {
           metadata: {
             FIRST_TRANSACTION_HASH: "0x0",
             LAST_TRANSACTION_HASH: "0x0",
-            ASSETS_IMPACTED: 1,
+            ASSETS_IMPACTED: ["0x1234"],
           },
         }),
       ]);
