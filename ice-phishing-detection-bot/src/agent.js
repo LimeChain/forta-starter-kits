@@ -31,7 +31,7 @@ const provideHandleTransaction = (addressesTracked) => {
 
       if (!exists) {
         addressesTracked[targetAddress] = new AddressApprovalTracker(
-          spender,
+          targetAddress,
           ApprovalTimePeriod
         );
       }
