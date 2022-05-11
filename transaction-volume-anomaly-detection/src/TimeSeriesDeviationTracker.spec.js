@@ -18,7 +18,7 @@ describe("Time Series Analysis", () => {
       },
     };
 
-    TimeSeriesAnalysisTemp.AddTransaction(mockTx);
+    TimeSeriesAnalysisTemp.addTransaction(mockTx);
 
     expect(TimeSeriesAnalysisTemp.total).not.toBe(0);
   });
@@ -35,8 +35,8 @@ describe("Time Series Analysis", () => {
       },
     };
 
-    TimeSeriesAnalysisTemp.AddTransaction(mockTx);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxWithNewNumber);
+    TimeSeriesAnalysisTemp.addTransaction(mockTx);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxWithNewNumber);
 
     expect(TimeSeriesAnalysisTemp.total).toBe(1);
   });
@@ -48,8 +48,8 @@ describe("Time Series Analysis", () => {
       },
     };
 
-    TimeSeriesAnalysisTemp.AddTransaction(mockTx);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTx);
+    TimeSeriesAnalysisTemp.addTransaction(mockTx);
+    TimeSeriesAnalysisTemp.addTransaction(mockTx);
 
     expect(TimeSeriesAnalysisTemp.total).toBe(2);
   });
@@ -87,15 +87,15 @@ describe("Time Series Analysis", () => {
       },
     };
 
-    TimeSeriesAnalysisTemp.AddTransaction(mockTx);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTx);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxTwo);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxThree);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxFour);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxFive);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxSix);
+    TimeSeriesAnalysisTemp.addTransaction(mockTx);
+    TimeSeriesAnalysisTemp.addTransaction(mockTx);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxTwo);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxThree);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxFour);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxFive);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxSix);
 
-    expect(TimeSeriesAnalysisTemp.IsFull()).toBe(true);
+    expect(TimeSeriesAnalysisTemp.isFull()).toBe(true);
   });
 
   it("Should successfully remove a Bucket if we add a new block and timeline is full", () => {
@@ -131,14 +131,14 @@ describe("Time Series Analysis", () => {
       },
     };
 
-    TimeSeriesAnalysisTemp.AddTransaction(mockTx);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxTwo);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxThree);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxFour);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxFive);
-    TimeSeriesAnalysisTemp.AddTransaction(mockTxSix);
+    TimeSeriesAnalysisTemp.addTransaction(mockTx);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxTwo);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxThree);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxFour);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxFive);
+    TimeSeriesAnalysisTemp.addTransaction(mockTxSix);
 
-    expect(TimeSeriesAnalysisTemp.IsFull()).toBe(true);
+    expect(TimeSeriesAnalysisTemp.isFull()).toBe(true);
   });
 
   it("Should add all items to buckets and return Std average for all data", () => {
@@ -170,22 +170,22 @@ describe("Time Series Analysis", () => {
     };
 
     for (let i = 0; i < 10; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTx);
+      TimeSeriesAnalysisTemp.addTransaction(mockTx);
     }
     for (let i = 0; i < 15; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxTwo);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxTwo);
     }
     for (let i = 0; i < 9; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxThree);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxThree);
     }
     for (let i = 0; i < 10; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFour);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFour);
     }
     for (let i = 0; i < 20; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFive);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFive);
     }
 
-    expect(TimeSeriesAnalysisTemp.GetStdForLatestBucket()).not.toBe(0);
+    expect(TimeSeriesAnalysisTemp.getStdForLatestBucket()).not.toBe(0);
   });
 
   it("Should add all items to buckets and return Total for last bucket for all data", () => {
@@ -217,22 +217,22 @@ describe("Time Series Analysis", () => {
     };
 
     for (let i = 0; i < 10; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTx);
+      TimeSeriesAnalysisTemp.addTransaction(mockTx);
     }
     for (let i = 0; i < 15; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxTwo);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxTwo);
     }
     for (let i = 0; i < 9; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxThree);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxThree);
     }
     for (let i = 0; i < 10; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFour);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFour);
     }
     for (let i = 0; i < 20; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFive);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFive);
     }
 
-    expect(TimeSeriesAnalysisTemp.GetTotalForLastBucket()).not.toBe(0);
+    expect(TimeSeriesAnalysisTemp.getTotalForLastBucket()).not.toBe(0);
   });
 
   it("Should add all items to buckets and return Baseline for all data", () => {
@@ -264,22 +264,22 @@ describe("Time Series Analysis", () => {
     };
 
     for (let i = 0; i < 10; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTx);
+      TimeSeriesAnalysisTemp.addTransaction(mockTx);
     }
     for (let i = 0; i < 15; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxTwo);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxTwo);
     }
     for (let i = 0; i < 9; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxThree);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxThree);
     }
     for (let i = 0; i < 10; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFour);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFour);
     }
     for (let i = 0; i < 20; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFive);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFive);
     }
 
-    expect(TimeSeriesAnalysisTemp.GetBaselineForLastBucket()).not.toBe(0);
+    expect(TimeSeriesAnalysisTemp.getBaselineForLastBucket()).not.toBe(0);
   });
 
   it("Should add all items to buckets and return Normal Marginal Difference for all data", () => {
@@ -311,21 +311,21 @@ describe("Time Series Analysis", () => {
     };
 
     for (let i = 0; i < 3; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTx);
+      TimeSeriesAnalysisTemp.addTransaction(mockTx);
     }
     for (let i = 0; i < 4; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxTwo);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxTwo);
     }
     for (let i = 0; i < 3; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxThree);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxThree);
     }
     for (let i = 0; i < 5; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFour);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFour);
     }
     for (let i = 0; i < 6; i++) {
-      TimeSeriesAnalysisTemp.AddTransaction(mockTxFive);
+      TimeSeriesAnalysisTemp.addTransaction(mockTxFive);
     }
 
-    expect(TimeSeriesAnalysisTemp.GetNormalMarginOfDifferences()).not.toBe(0);
+    expect(TimeSeriesAnalysisTemp.getNormalMarginOfDifferences()).not.toBe(0);
   });
 });

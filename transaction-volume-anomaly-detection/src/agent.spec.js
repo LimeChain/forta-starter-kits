@@ -169,7 +169,7 @@ describe("Transaction Volume Anomaly Detection", () => {
 
       const findings = await handleBlock(mockBlockEvent);
       expect(findings).toStrictEqual([]);
-      expect(mockContractBuckets[0]["0x123"].successfulTx.IsFull()).toBe(true);
+      expect(mockContractBuckets[0]["0x123"].successfulTx.isFull()).toBe(true);
     });
 
     it("should not return any findings if there are not tx anomalies for failed tx", async () => {
@@ -225,7 +225,7 @@ describe("Transaction Volume Anomaly Detection", () => {
 
       const findings = await handleBlock(mockBlockEvent);
       expect(findings).toStrictEqual([]);
-      expect(mockContractBuckets[0]["0x123"].failedTx.IsFull()).toBe(true);
+      expect(mockContractBuckets[0]["0x123"].failedTx.isFull()).toBe(true);
     });
 
     it("should return a finding if there are  tx anomalies for successful tx", async () => {
@@ -295,7 +295,7 @@ describe("Transaction Volume Anomaly Detection", () => {
           },
         }),
       ]);
-      expect(mockContractBuckets[0]["0x123"].successfulTx.IsFull()).toBe(true);
+      expect(mockContractBuckets[0]["0x123"].successfulTx.isFull()).toBe(true);
     });
     it("should return a finding if there are  tx anomalies for failed tx", async () => {
       const mockTxEventTwo = {
@@ -365,7 +365,7 @@ describe("Transaction Volume Anomaly Detection", () => {
         }),
       ]);
 
-      expect(mockContractBuckets[0]["0x123"].failedTx.IsFull()).toBe(true);
+      expect(mockContractBuckets[0]["0x123"].failedTx.isFull()).toBe(true);
     });
 
     it("should not return any findings if there are no tx anomalies for successful internal tx", async () => {
@@ -435,11 +435,15 @@ describe("Transaction Volume Anomaly Detection", () => {
 
       expect(findings).toStrictEqual([]);
       expect(
-        mockContractBuckets[0]["0x123"].successfulInternalTx.IsFull()
+        mockContractBuckets[0]["0x123"].successfulInternalTx.isFull()
       ).toBe(true);
     });
 
     it("should not return any findings if there are no tx anomalies for failed internal tx", async () => {
+      for (let trace of mockTraces) {
+        trace.error = "DEMO";
+      }
+
       const mockTxEventWithTraces = {
         traces: mockTraces,
         to: "0x123",
@@ -505,12 +509,16 @@ describe("Transaction Volume Anomaly Detection", () => {
       const findings = await handleBlock(mockBlockEvent);
 
       expect(findings).toStrictEqual([]);
-      expect(mockContractBuckets[0]["0x123"].failedInternalTx.IsFull()).toBe(
+      expect(mockContractBuckets[0]["0x123"].failedInternalTx.isFull()).toBe(
         true
       );
     });
 
     it("should return a finding if there are  tx anomalies for successful internal tx", async () => {
+      for (let trace of mockTraces) {
+        delete trace.error;
+      }
+
       const mockTxEventWithTraces = {
         traces: mockTraces,
         to: "0x123",
@@ -591,11 +599,14 @@ describe("Transaction Volume Anomaly Detection", () => {
         }),
       ]);
       expect(
-        mockContractBuckets[0]["0x123"].successfulInternalTx.IsFull()
+        mockContractBuckets[0]["0x123"].successfulInternalTx.isFull()
       ).toBe(true);
     });
 
     it("should return a findings if there are tx anomalies for failed internal tx", async () => {
+      for (let trace of mockTraces) {
+        trace.error = "DEMO";
+      }
       const mockTxEventWithTraces = {
         traces: mockTraces,
         to: "0x123",
@@ -675,7 +686,7 @@ describe("Transaction Volume Anomaly Detection", () => {
           },
         }),
       ]);
-      expect(mockContractBuckets[0]["0x123"].failedInternalTx.IsFull()).toBe(
+      expect(mockContractBuckets[0]["0x123"].failedInternalTx.isFull()).toBe(
         true
       );
     });

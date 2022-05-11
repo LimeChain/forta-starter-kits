@@ -55,15 +55,14 @@ function provideHandleTransaction(
       if (txEvent.traces) {
         if (txEvent.traces.length > 0) {
           for (let trace of txEvent.traces) {
-            const { status } = await getTransactionReceipt(
-              trace.transactionHash
-            );
-            if (status) {
-              TimeSeriesAnalysisForTx.successfulInternalTx.AddTransaction(
-                txEvent
+            if (!trace.error) {
+              TimeSeriesAnalysisForTx.successfulInternalTx.addTransaction(
+                txEvent.block.number
               );
-            } else if (!status) {
-              TimeSeriesAnalysisForTx.failedInternalTx.AddTransaction(txEvent);
+            } else if (trace.error) {
+              TimeSeriesAnalysisForTx.failedInternalTx.addTransaction(
+                txEvent.block.number
+              );
             }
           }
         }
@@ -71,9 +70,11 @@ function provideHandleTransaction(
         const { status } = await getTransactionReceipt(txEvent.hash);
 
         if (status) {
-          TimeSeriesAnalysisForTx.successfulTx.AddTransaction(txEvent);
+          TimeSeriesAnalysisForTx.successfulTx.addTransaction(
+            txEvent.block.number
+          );
         } else if (!status) {
-          TimeSeriesAnalysisForTx.failedTx.AddTransaction(txEvent);
+          TimeSeriesAnalysisForTx.failedTx.addTransaction(txEvent.block.number);
         }
       }
     }
@@ -114,19 +115,19 @@ async function runJob(blockEvent, contractBuckets) {
     const TimeSeriesAnalysisFailedInternalTx =
       TimeSeriesAnalysisBuckets[0].failedInternalTx;
 
-    if (TimeSeriesAnalysisSuccessfulInternalTx.IsFull()) {
+    if (TimeSeriesAnalysisSuccessfulInternalTx.isFull()) {
       const std =
-        TimeSeriesAnalysisSuccessfulInternalTx.GetStdForLatestBucket();
+        TimeSeriesAnalysisSuccessfulInternalTx.getStdForLatestBucket();
 
       const normalMargin =
-        TimeSeriesAnalysisSuccessfulInternalTx.GetNormalMarginOfDifferences();
+        TimeSeriesAnalysisSuccessfulInternalTx.getNormalMarginOfDifferences();
 
       if (Math.floor(std) * globalSensitivity > normalMargin) {
         const count =
-          TimeSeriesAnalysisSuccessfulInternalTx.GetTotalForLastBucket();
+          TimeSeriesAnalysisSuccessfulInternalTx.getTotalForLastBucket();
 
         const baseline =
-          TimeSeriesAnalysisSuccessfulInternalTx.GetBaselineForLastBucket();
+          TimeSeriesAnalysisSuccessfulInternalTx.getBaselineForLastBucket();
         findings.push(
           Finding.fromObject({
             name: "Unusually high number of successful internal transactions",
@@ -145,18 +146,18 @@ async function runJob(blockEvent, contractBuckets) {
       }
     }
 
-    if (TimeSeriesAnalysisFailedInternalTx.IsFull()) {
-      const std = TimeSeriesAnalysisFailedInternalTx.GetStdForLatestBucket();
+    if (TimeSeriesAnalysisFailedInternalTx.isFull()) {
+      const std = TimeSeriesAnalysisFailedInternalTx.getStdForLatestBucket();
 
       const normalMargin =
-        TimeSeriesAnalysisFailedInternalTx.GetNormalMarginOfDifferences();
+        TimeSeriesAnalysisFailedInternalTx.getNormalMarginOfDifferences();
 
       if (Math.floor(std) * globalSensitivity > normalMargin) {
         const count =
-          TimeSeriesAnalysisFailedInternalTx.GetTotalForLastBucket();
+          TimeSeriesAnalysisFailedInternalTx.getTotalForLastBucket();
 
         const baseline =
-          TimeSeriesAnalysisFailedInternalTx.GetBaselineForLastBucket();
+          TimeSeriesAnalysisFailedInternalTx.getBaselineForLastBucket();
         findings.push(
           Finding.fromObject({
             name: "Unusually high number of failed internal transactions",
@@ -175,16 +176,16 @@ async function runJob(blockEvent, contractBuckets) {
       }
     }
 
-    if (TimeSeriesAnalysisFailedTx.IsFull()) {
-      const std = TimeSeriesAnalysisFailedTx.GetStdForLatestBucket();
+    if (TimeSeriesAnalysisFailedTx.isFull()) {
+      const std = TimeSeriesAnalysisFailedTx.getStdForLatestBucket();
 
       const normalMargin =
-        TimeSeriesAnalysisFailedTx.GetNormalMarginOfDifferences();
+        TimeSeriesAnalysisFailedTx.getNormalMarginOfDifferences();
 
       if (Math.floor(std) * globalSensitivity > normalMargin) {
-        const count = TimeSeriesAnalysisFailedTx.GetTotalForLastBucket();
+        const count = TimeSeriesAnalysisFailedTx.getTotalForLastBucket();
 
-        const baseline = TimeSeriesAnalysisFailedTx.GetBaselineForLastBucket();
+        const baseline = TimeSeriesAnalysisFailedTx.getBaselineForLastBucket();
         findings.push(
           Finding.fromObject({
             name: "Unusually high number of failed transactions",
@@ -202,17 +203,17 @@ async function runJob(blockEvent, contractBuckets) {
         );
       }
     }
-    if (TimeSeriesAnalysisSuccessfulTx.IsFull()) {
-      const std = TimeSeriesAnalysisSuccessfulTx.GetStdForLatestBucket();
+    if (TimeSeriesAnalysisSuccessfulTx.isFull()) {
+      const std = TimeSeriesAnalysisSuccessfulTx.getStdForLatestBucket();
 
       const normalMargin =
-        TimeSeriesAnalysisSuccessfulTx.GetNormalMarginOfDifferences();
+        TimeSeriesAnalysisSuccessfulTx.getNormalMarginOfDifferences();
 
       if (Math.floor(std) * globalSensitivity > normalMargin) {
-        const count = TimeSeriesAnalysisSuccessfulTx.GetTotalForLastBucket();
+        const count = TimeSeriesAnalysisSuccessfulTx.getTotalForLastBucket();
 
         const baseline =
-          TimeSeriesAnalysisSuccessfulTx.GetBaselineForLastBucket();
+          TimeSeriesAnalysisSuccessfulTx.getBaselineForLastBucket();
         findings.push(
           Finding.fromObject({
             name: "Unusually high number of successful transactions",

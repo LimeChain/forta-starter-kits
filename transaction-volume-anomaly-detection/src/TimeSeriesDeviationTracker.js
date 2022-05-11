@@ -32,40 +32,40 @@ class TimeSeriesAnalysis {
   }
 
   //Logic for adding a transaction to the bucket
-  AddTransaction(tx) {
-    if (tx.block.number != this.currentBlock && this.currentBlock != 0) {
-      this.updateBlock(tx.block.number);
-      this.AddToBucket(this.total);
+  addTransaction(blockNumber) {
+    if (blockNumber != this.currentBlock && this.currentBlock != 0) {
+      this.updateBlock(blockNumber);
+      this.addToBucket(this.total);
 
       this.total++;
-    } else if (tx.block.number == this.currentBlock) {
+    } else if (blockNumber == this.currentBlock) {
       this.total++;
     } else if (this.currentBlock == 0) {
       this.total++;
-      this.updateCurrentBlock(tx.block.number);
+      this.updateCurrentBlock(blockNumber);
     }
   }
 
-  AddToBucket(data) {
+  addToBucket(data) {
     this.bucket.addElement(new BigNumber(data));
     this.stdForAll.push(this.bucket.getStandardDeviation().toNumber());
     this.total = 0;
   }
 
-  GetStdForLatestBucket() {
+  getStdForLatestBucket() {
     return this.bucket.getStandardDeviation().toNumber();
   }
 
-  GetTotalForLastBucket() {
+  getTotalForLastBucket() {
     return this.bucket.getSum().toNumber();
   }
 
-  GetBaselineForLastBucket() {
+  getBaselineForLastBucket() {
     return this.bucket.getAverage().toNumber();
   }
 
   //We need the SMA to calculate the EMA for all transactions
-  SimpleMovingAverage(prices, window, n = Infinity) {
+  simpleMovingAverage(prices, window, n = Infinity) {
     let index = window - 1;
     const length = prices.length + 1;
 
@@ -84,10 +84,10 @@ class TimeSeriesAnalysis {
 
   /*
     Here we calculate the EMA of the standard deviation and we use this to determine the marginal difference 
-    between the EMA which is used to determin the normal margin that is used to decide if there are unusual amounts of transactions
+    between the EMA which is used to determine the normal margin that is used to decide if there are unusual amounts of transactions
     that happen
   */
-  GetNormalMarginOfDifferences() {
+  getNormalMarginOfDifferences() {
     let marginCurrent = 0;
 
     let index = this.blockSize - 1;
@@ -95,7 +95,7 @@ class TimeSeriesAnalysis {
     let previousEmaIndex = 0;
     const smoothingFactor = 2 / (this.blockSize + 1);
     const exponentialMovingAvg = [];
-    const [sma] = this.SimpleMovingAverage(this.stdForAll, this.blockSize, 1);
+    const [sma] = this.simpleMovingAverage(this.stdForAll, this.blockSize, 1);
     exponentialMovingAvg.push(sma);
     while (++index < length) {
       const value = this.stdForAll[index];
@@ -114,7 +114,7 @@ class TimeSeriesAnalysis {
   }
 
   //Check to see if we have enough data to make calculations
-  IsFull() {
+  isFull() {
     return this.bucket.getNumElements() == this.timeline;
   }
 }
