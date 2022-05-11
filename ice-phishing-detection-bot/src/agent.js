@@ -23,7 +23,7 @@ const provideHandleTransaction = (addressesTracked) => {
       const targetAssetAddress = tx.address;
       const { name } = tx;
       const { spender } = tx.args;
-      const { from, to } = tx.args;
+      const { from } = tx.args;
       const hash = txEvent.hash;
       const targetAddress = spender ? spender : from;
 
@@ -38,7 +38,6 @@ const provideHandleTransaction = (addressesTracked) => {
 
       if (name == "Approval") {
         if (!DEX_AND_CEX_ADDRESSES.includes(spender)) {
-          const to = txEvent.to;
           addressesTracked[targetAddress].addToApprovals(
             targetAssetAddress,
             spender,
