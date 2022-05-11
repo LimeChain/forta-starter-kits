@@ -13,7 +13,7 @@ class TimeSeriesAnalysis {
     this.blockSize = blockSize;
     this.bucket = new RollingMath(blockSize);
     this.stdForAll = [];
-    this.timeline = 5; //the time in minutes we need to track to check for unusual counts
+    this.timeline = blockSize; //the time in minutes we need to track to check for unusual counts
     this.currentBlock = 0;
     this.lastBlock = 0;
     this.total = 0; //total transactions that complete our requirements
@@ -48,6 +48,9 @@ class TimeSeriesAnalysis {
 
   addToBucket(data) {
     this.bucket.addElement(new BigNumber(data));
+    if (this.stdForAll.length > this.timeline) {
+      this.stdForAll.shift();
+    }
     this.stdForAll.push(this.bucket.getStandardDeviation().toNumber());
     this.total = 0;
   }
