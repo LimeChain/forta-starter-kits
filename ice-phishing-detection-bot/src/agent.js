@@ -1,6 +1,11 @@
-const { Finding, FindingSeverity, FindingType } = require("forta-agent");
 const {
-  DEX_AND_CEX_ADDRESSES,
+  Finding,
+  FindingSeverity,
+  FindingType,
+  getEthersProvider,
+} = require("forta-agent");
+const {
+  getDexAndCexAddresses,
   ApprovalThreshold,
   ApprovalTimePeriod,
 } = require("./agent.config");
@@ -9,10 +14,16 @@ const eventABIs = [
   "event Approval(address indexed owner,address indexed spender,uint256 value)",
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
-
+let DEX_AND_CEX_ADDRESSES = [];
 const addressesTracked = {};
 let isRunning = false;
 let result = [];
+
+const initialize = async () => {
+  const { chainId } = await getEthersProvider().getNetwork();
+  DEX_AND_CEX_ADDRESSES = getDexAndCexAddresses(chainId);
+};
+
 const provideHandleTransaction = (addressesTracked) => {
   return async function handleTransaction(txEvent) {
     const findings = [];
@@ -143,6 +154,7 @@ const runJob = (addressesTracked) => {
 module.exports = {
   handleTransaction: provideHandleTransaction(addressesTracked),
   handleBlock: provideHandleBlock(addressesTracked),
+  initialize,
   provideHandleTransaction,
   provideHandleBlock,
 };

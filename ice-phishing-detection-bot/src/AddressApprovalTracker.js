@@ -15,8 +15,11 @@ class AddressApprovalTracker {
   addToApprovals(approvedAssetAccount, accountApproved, txHash) {
     this.totalApprovalsForRange++;
     const found = this.trackingApprovals.find(
-      (t) => t.approvedAssetAccount == approvedAssetAccount
+      (t) =>
+        t.approvedAssetAccount == approvedAssetAccount &&
+        t.accountApproved == accountApproved
     );
+
     if (!found) {
       this.totalAssetsApproved++;
     }
@@ -78,6 +81,7 @@ class AddressApprovalTracker {
         trackedToRemove.push(t);
       }
     }
+
     totalAssetsApprovedRemoved = trackedToRemove.filter((item, pos) => {
       return trackedToRemove.indexOf(item) == pos;
     });
@@ -169,7 +173,7 @@ class AddressApprovalTracker {
       startHash: this.trackingApprovals[0].txHash,
       endHash: this.trackingApprovals[this.trackingApprovals.length - 1].txHash,
       assetsImpacted: assetsImpactedArrFilteredFromDuplicated,
-      assetsImpactedCount: this.totalAssetsApproved,
+      assetsImpactedCount: assetsImpactedArrFilteredFromDuplicated.length,
       accountApproved: this.totalApprovalsForRange,
     };
     this.trackingApprovals = [];
@@ -188,7 +192,7 @@ class AddressApprovalTracker {
       startHash: this.trackingTransfers[0].txHash,
       endHash: this.trackingTransfers[this.trackingTransfers.length - 1].txHash,
       assetsImpacted: assetsTransferedFilteredForDuplicates,
-      assetsImpactedCount: this.totalAssetsTransfered,
+      assetsImpactedCount: assetsTransferedFilteredForDuplicates.length,
       accountsImpacted: this.totalAccountsTransferedFrom,
     };
     this.trackingTransfers = [];

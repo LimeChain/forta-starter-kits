@@ -35,6 +35,4 @@ This bot detects high approvals for a specific account and if any assets are tra
 
 ## Test Data
 
-The bot behaviour can be verified with the provided unit tests and with the following block range:
-
-- 14703440..14703468 (ethereum)
+The bot behaviour can be verified with the provided unit tests
