@@ -11,6 +11,8 @@ This bot detects high approvals for a specific account and if any assets are tra
 - Polygon
 - Arbitrum
 - Optimism
+- Avalanche
+- Fantom
 
 ## Alerts
 
