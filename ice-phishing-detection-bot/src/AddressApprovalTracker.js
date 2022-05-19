@@ -12,12 +12,11 @@ class AddressApprovalTracker {
     this.totalAccountsTransferedFrom = 0;
   }
 
-  addToApprovals(approvedAssetAccount, accountApproved, txHash) {
+  addToApprovals(approvedAsset, accountApproved, txHash) {
     this.totalApprovalsForRange++;
     const found = this.trackingApprovals.find(
       (t) =>
-        t.approvedAssetAccount == approvedAssetAccount &&
-        t.accountApproved == accountApproved
+        t.approvedAsset == approvedAsset && t.accountApproved == accountApproved
     );
 
     if (!found) {
@@ -25,7 +24,7 @@ class AddressApprovalTracker {
     }
     const approvalDate = new Date();
     const trackingObject = {
-      approvedAssetAccount,
+      approvedAsset,
       accountApproved,
       approvalDate,
       txHash,
@@ -37,7 +36,7 @@ class AddressApprovalTracker {
 
   addToTransfers(assetTransfered, accountTransferedFrom, txHash) {
     const isFromAlreadyApproved = this.trackingApprovals.find(
-      (t) => t.approvedAssetAccount == assetTransfered
+      (t) => t.approvedAsset == assetTransfered
     );
 
     if (!isFromAlreadyApproved) return;
@@ -161,7 +160,7 @@ class AddressApprovalTracker {
 
   getApprovedForFlag() {
     const assetsImpactedArr = this.trackingApprovals.map(
-      (approval) => approval.approvedAssetAccount
+      (approval) => approval.approvedAsset
     );
 
     const assetsImpactedArrFilteredFromDuplicated = assetsImpactedArr.filter(
