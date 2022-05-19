@@ -133,6 +133,7 @@ const provideHandleBlock = (contractTracker, contractsForChain) => {
 
           tracker.successfulTx.TSA.train(tracker.successfulTx.txTracker);
           tracker.failedTx.TSA.train(tracker.failedTx.txTracker);
+
           tracker.successfulInternalTx.TSA.train(
             tracker.successfulInternalTx.txTracker
           );
@@ -265,9 +266,12 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
       const [pred, error] = tracker.failedInternalTx.TSA.predict(1);
       const count =
         tracker.failedInternalTx.txTracker[
+          tracker.failedInternalTx.txTracker.length - 1
+        ];
+      const baseline =
+        tracker.failedInternalTx.txTracker[
           tracker.failedInternalTx.txTracker.length - 2
         ];
-      const baseline = pred[0];
 
       if (count * error[0] * globalSensitivity > pred[0]) {
         localFindings.push(

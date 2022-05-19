@@ -13,7 +13,7 @@ const ARIMA_SETTINGS = {
   P: 1,
   D: 0,
   Q: 1,
-  s: 4,
+  s: 5,
   verbose: false,
 };
 jest.mock("./agent.config.js", () => {
@@ -418,6 +418,47 @@ describe("Transaction Volume Anomaly Detection", () => {
         description: `Significant increase of successful internal transactions have been observed from 70 to 70`,
         alertId: "SUCCESSFUL-INTERNAL-TRANSACTION-VOL-INCREASE",
         severity: FindingSeverity.Low,
+        type: FindingType.Suspicious,
+        metadata: {
+          COUNT: 1600,
+          EXPECTED_BASELINE: 10,
+        },
+      }),
+    ]);
+  });
+
+  it("Should return findings if there are transaction volume anomalies for failed internal transactions", async () => {
+    mockTxEventWithTraces.traces[0].error = true;
+    await handleBlock(mockBlockEvent);
+    for (let i = 0; i < 10; i++) {
+      await handleTransaction(mockTxEventWithTraces);
+    }
+
+    mockBlockEvent.block.timestamp = 5;
+    await handleBlock(mockBlockEvent);
+    for (let i = 0; i < 15; i++) {
+      await handleTransaction(mockTxEventWithTraces);
+    }
+
+    await handleBlock(mockBlockEvent);
+    for (let i = 0; i < 10; i++) {
+      await handleTransaction(mockTxEventWithTraces);
+    }
+
+    await handleBlock(mockBlockEvent);
+    for (let i = 0; i < 1600; i++) {
+      await handleTransaction(mockTxEventWithTraces);
+    }
+
+    mockBlockEvent.block.timestamp = 1;
+    const findings = await handleBlock(mockBlockEvent);
+
+    expect(findings).toStrictEqual([
+      Finding.fromObject({
+        name: "Unusually high number of failed internal transactions",
+        description: `Significant increase of failed internal transactions have been observed from 70 to 70`,
+        alertId: "FAILED-INTERNAL-TRANSACTION-VOL-INCREASE",
+        severity: FindingSeverity.Medium,
         type: FindingType.Suspicious,
         metadata: {
           COUNT: 1600,
