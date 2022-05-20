@@ -142,12 +142,14 @@ const provideHandleBlock = (contractTracker, contractsForChain) => {
           if (tracker.successfulTx.currentBlockCount >= bucketBlockSize) {
             tracker.successfulTx.TSA.train(tracker.successfulTx.txTracker);
             tracker.successfulTx.currentBlockCount = 0;
+            isTrained = true;
           } else {
             tracker.successfulTx.currentBlockCount++;
           }
           if (tracker.failedTx.currentBlockCount >= bucketBlockSize) {
             tracker.failedTx.TSA.train(tracker.failedTx.txTracker);
             tracker.failedTx.currentBlockCount = 0;
+            isTrained = true;
           } else {
             tracker.failedTx.currentBlockCount++;
           }
@@ -159,6 +161,7 @@ const provideHandleBlock = (contractTracker, contractsForChain) => {
               tracker.successfulInternalTx.txTracker
             );
             tracker.successfulInternalTx.currentBlockCount = 0;
+            isTrained = true;
           } else {
             tracker.successfulInternalTx.currentBlockCount++;
           }
@@ -168,11 +171,12 @@ const provideHandleBlock = (contractTracker, contractsForChain) => {
               tracker.failedInternalTx.txTracker
             );
             tracker.failedInternalTx.currentBlockCount = 0;
+            isTrained = true;
           } else {
             tracker.failedInternalTx.currentBlockCount++;
           }
         }
-        isTrained = true;
+
         startTimestamp = blockEvent.block.timestamp;
       }
 
