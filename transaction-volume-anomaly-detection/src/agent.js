@@ -19,15 +19,15 @@ const ARIMA_SETTINGS = {
   P: 1,
   D: 0,
   Q: 1,
-  s: 168,
+  s: 50,
   verbose: false,
 };
 const ARIMA = require("arima");
 const provider = getEthersProvider();
 const contractTracker = {};
-const timestampThreshold = bucketBlockSize * 60 * 60; // The timestamp time in seconds based on the bucket block size
+const timestampThreshold = bucketBlockSize * 60 * 60 * 60; // The timestamp time in seconds based on the bucket block size and blockTime
 
-let contractsForChain;
+let contractsForChain = [];
 let isFirstBlock = true;
 let startTimestamp = 0;
 let isTrained = false;
@@ -45,21 +45,25 @@ const initialize = async () => {
         TSA: new ARIMA(ARIMA_SETTINGS),
         txTracker: [],
         txCount: 0,
+        currentBlockCount: 0,
       },
       failedTx: {
         TSA: new ARIMA(ARIMA_SETTINGS),
         txTracker: [],
         txCount: 0,
+        currentBlockCount: 0,
       },
       successfulInternalTx: {
         TSA: new ARIMA(ARIMA_SETTINGS),
         txTracker: [],
         txCount: 0,
+        currentBlockCount: 0,
       },
       failedInternalTx: {
         TSA: new ARIMA(ARIMA_SETTINGS),
         txTracker: [],
         txCount: 0,
+        currentBlockCount: 0,
       },
     };
   }
@@ -81,19 +85,20 @@ const provideHandleTransaction = (
 
       if (txEvent.traces.length > 0) {
         for (const trace of txEvent.traces) {
-          if (!trace.error) {
-            tracker.successfulInternalTx.txCount++;
-          } else if (trace.error) {
-            tracker.failedInternalTx.txCount++;
+          if (trace.action.to == contract) {
+            if (!trace.error) {
+              tracker.successfulInternalTx.txCount++;
+            } else if (trace.error) {
+              tracker.failedInternalTx.txCount++;
+            }
           }
         }
-      } else {
-        const { status } = await getTransactionReceipt(txEvent.hash);
-        if (status) {
-          tracker.successfulTx.txCount++;
-        } else if (!status) {
-          tracker.failedTx.txCount++;
-        }
+      }
+      const { status } = await getTransactionReceipt(txEvent.hash);
+      if (status) {
+        tracker.successfulTx.txCount++;
+      } else if (!status) {
+        tracker.failedTx.txCount++;
       }
     }
 
@@ -127,20 +132,45 @@ const provideHandleBlock = (contractTracker, contractsForChain) => {
       }
 
       //If we pass the timestampThreshold train the SARIMA Model to predict data
-      if (blockEvent.block.timestamp - startTimestamp <= timestampThreshold) {
+      if (
+        blockEvent.block.timestamp - startTimestamp <= timestampThreshold &&
+        !isTrained
+      ) {
         for (let contract of contractsForChain) {
           const tracker = contractTracker[contract];
 
-          tracker.successfulTx.TSA.train(tracker.successfulTx.txTracker);
-          tracker.failedTx.TSA.train(tracker.failedTx.txTracker);
+          if (tracker.successfulTx.currentBlockCount >= bucketBlockSize) {
+            tracker.successfulTx.TSA.train(tracker.successfulTx.txTracker);
+            tracker.successfulTx.currentBlockCount = 0;
+          } else {
+            tracker.successfulTx.currentBlockCount++;
+          }
+          if (tracker.failedTx.currentBlockCount >= bucketBlockSize) {
+            tracker.failedTx.TSA.train(tracker.failedTx.txTracker);
+            tracker.failedTx.currentBlockCount = 0;
+          } else {
+            tracker.failedTx.currentBlockCount++;
+          }
 
-          tracker.successfulInternalTx.TSA.train(
-            tracker.successfulInternalTx.txTracker
-          );
+          if (
+            tracker.successfulInternalTx.currentBlockCount >= bucketBlockSize
+          ) {
+            tracker.successfulInternalTx.TSA.train(
+              tracker.successfulInternalTx.txTracker
+            );
+            tracker.successfulInternalTx.currentBlockCount = 0;
+          } else {
+            tracker.successfulInternalTx.currentBlockCount++;
+          }
 
-          tracker.failedInternalTx.TSA.train(
-            tracker.failedInternalTx.txTracker
-          );
+          if (tracker.failedInternalTx.currentBlockCount >= bucketBlockSize) {
+            tracker.failedInternalTx.TSA.train(
+              tracker.failedInternalTx.txTracker
+            );
+            tracker.failedInternalTx.currentBlockCount = 0;
+          } else {
+            tracker.failedInternalTx.currentBlockCount++;
+          }
         }
         isTrained = true;
         startTimestamp = blockEvent.block.timestamp;
@@ -149,7 +179,6 @@ const provideHandleBlock = (contractTracker, contractsForChain) => {
       //If the model is trained and we are not running a job, Run job
       if (!isRunningJob && isTrained) {
         runJob(contractTracker, contractsForChain, blockEvent);
-        isTrained = false;
       }
     } else {
       startTimestamp = blockEvent.block.timestamp;
@@ -174,17 +203,19 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
     {
       const [pred, error] = tracker.successfulTx.TSA.predict(1);
 
+      //The count is the latest txCount
       const count =
         tracker.successfulTx.txTracker[
           tracker.successfulTx.txTracker.length - 1
         ];
 
+      //The baseline is the normal txCount
       const baseline =
         tracker.successfulTx.txTracker[
           tracker.successfulTx.txTracker.length - 2
         ];
 
-      if (count * error[0] * globalSensitivity > pred[0]) {
+      if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({
             name: "Unusually high number of successful transactions",
@@ -200,6 +231,8 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
             },
           })
         );
+        isTrained = false;
+        tracker.successfulTx.txTracker = [];
       }
     }
 
@@ -212,7 +245,7 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
       const baseline =
         tracker.failedTx.txTracker[tracker.failedTx.txTracker.length - 2];
 
-      if (count * error[0] * globalSensitivity > pred[0]) {
+      if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({
             name: "Unusually high number of failed transactions",
@@ -228,6 +261,8 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
             },
           })
         );
+        isTrained = false;
+        tracker.failedTx.txTracker = [];
       }
     }
 
@@ -238,12 +273,13 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
         tracker.successfulInternalTx.txTracker[
           tracker.successfulInternalTx.txTracker.length - 1
         ];
+
       const baseline =
         tracker.successfulInternalTx.txTracker[
           tracker.successfulInternalTx.txTracker.length - 2
         ];
 
-      if (count * error[0] * globalSensitivity > pred[0]) {
+      if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({
             name: "Unusually high number of successful internal transactions",
@@ -259,6 +295,8 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
             },
           })
         );
+        isTrained = false;
+        tracker.successfulInternalTx.txTracker = [];
       }
     }
 
@@ -273,7 +311,7 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
           tracker.failedInternalTx.txTracker.length - 2
         ];
 
-      if (count * error[0] * globalSensitivity > pred[0]) {
+      if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({
             name: "Unusually high number of failed internal transactions",
@@ -289,13 +327,10 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
             },
           })
         );
+        isTrained = false;
+        tracker.failedInternalTx.txTracker = [];
       }
     }
-
-    tracker.successfulTx.txTracker = [];
-    tracker.failedTx.txTracker = [];
-    tracker.successfulInternalTx.txTracker = [];
-    tracker.failedInternalTx.txTracker = [];
   }
 
   isRunningJob = false;
@@ -312,4 +347,5 @@ module.exports = {
   provideHandleTransaction,
   provideHandleBlock,
   resetIsFirstBlock: () => (isFirstBlock = true),
+  resetIsTrained: () => (isTrained = false),
 };

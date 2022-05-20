@@ -4,6 +4,7 @@ const {
   provideHandleTransaction,
   provideHandleBlock,
   resetIsFirstBlock,
+  resetIsTrained,
 } = require("./agent");
 const ARIMA = require("arima");
 const ARIMA_SETTINGS = {
@@ -35,6 +36,9 @@ describe("Transaction Volume Anomaly Detection", () => {
     to: "0x123",
     traces: [
       {
+        action: {
+          to: "0x123",
+        },
         error: false,
       },
     ],
@@ -62,21 +66,25 @@ describe("Transaction Volume Anomaly Detection", () => {
           TSA: new ARIMA(ARIMA_SETTINGS),
           txTracker: [],
           txCount: 0,
+          currentBlockCount: 0,
         },
         failedTx: {
           TSA: new ARIMA(ARIMA_SETTINGS),
           txTracker: [],
           txCount: 0,
+          currentBlockCount: 0,
         },
         successfulInternalTx: {
           TSA: new ARIMA(ARIMA_SETTINGS),
           txTracker: [],
           txCount: 0,
+          currentBlockCount: 0,
         },
         failedInternalTx: {
           TSA: new ARIMA(ARIMA_SETTINGS),
           txTracker: [],
           txCount: 0,
+          currentBlockCount: 0,
         },
       },
     };
@@ -87,6 +95,7 @@ describe("Transaction Volume Anomaly Detection", () => {
     );
     handleBlock = provideHandleBlock(mockTracker, mockContracts);
     resetIsFirstBlock();
+    resetIsTrained();
   });
 
   it("Should successfully increment on successful transaction", async () => {
@@ -104,12 +113,14 @@ describe("Transaction Volume Anomaly Detection", () => {
   });
 
   it("Should successfully increment on successful internal transaction", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: true });
     await handleTransaction(mockTxEventWithTraces);
 
     expect(mockTracker["0x123"].successfulInternalTx.txCount).toBe(1);
   });
 
   it("Should successfully increment on failed internal transaction", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: false });
     mockTxEventWithTraces.traces[0].error = true;
     await handleTransaction(mockTxEventWithTraces);
 
@@ -137,6 +148,7 @@ describe("Transaction Volume Anomaly Detection", () => {
   });
 
   it("Should successfully push to txTracker array in successful internal transactions", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: true });
     await handleTransaction(mockTxEventWithTraces);
     await handleBlock(mockBlockEvent);
     mockBlockEvent.block.timestamp = 5;
@@ -147,6 +159,7 @@ describe("Transaction Volume Anomaly Detection", () => {
   });
 
   it("Should successfully push to txTracker array in failed internal transactions", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: false });
     mockTxEventWithTraces.traces[0].error = true;
 
     await handleTransaction(mockTxEventWithTraces);
@@ -163,36 +176,38 @@ describe("Transaction Volume Anomaly Detection", () => {
     await handleBlock(mockBlockEvent);
     mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
-    expect(mockTracker["0x123"].successfulTx.txTracker).toStrictEqual([]);
+    expect(mockTracker["0x123"].successfulTx.txTracker).toStrictEqual([1]);
   });
 
   it("Should successfully train model if timestamp threshold passes for failed transaction", async () => {
     mockGetTxReceipt.mockReturnValue({ status: false });
 
     await handleTransaction(mockTxEvent);
-    await handleBlock(mockBlockEvent);
     mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
-    expect(mockTracker["0x123"].failedTx.txTracker).toStrictEqual([]);
+    await handleBlock(mockBlockEvent);
+    expect(mockTracker["0x123"].failedTx.txTracker).toStrictEqual([1]);
   });
 
   it("Should successfully train model if timestamp threshold passes for successful internal transaction", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: true });
     await handleTransaction(mockTxEventWithTraces);
     await handleBlock(mockBlockEvent);
     mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
-    expect(mockTracker["0x123"].successfulInternalTx.txTracker).toStrictEqual(
-      []
-    );
+    expect(mockTracker["0x123"].successfulInternalTx.txTracker).toStrictEqual([
+      1,
+    ]);
   });
 
   it("Should successfully train model if timestamp threshold passes for failed internal transaction", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: false });
     mockTxEventWithTraces.traces[0].error = true;
     await handleTransaction(mockTxEventWithTraces);
     await handleBlock(mockBlockEvent);
     mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
-    expect(mockTracker["0x123"].failedInternalTx.txTracker).toStrictEqual([]);
+    expect(mockTracker["0x123"].failedInternalTx.txTracker).toStrictEqual([1]);
   });
 
   it("Should return no findings if there are no transaction volume anomalies for successful transactions", async () => {
@@ -206,7 +221,7 @@ describe("Transaction Volume Anomaly Detection", () => {
     for (let i = 0; i < 15; i++) {
       await handleTransaction(mockTxEvent);
     }
-
+    mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 10; i++) {
       await handleTransaction(mockTxEvent);
@@ -217,7 +232,6 @@ describe("Transaction Volume Anomaly Detection", () => {
       await handleTransaction(mockTxEvent);
     }
 
-    mockBlockEvent.block.timestamp = 1;
     const findings = await handleBlock(mockBlockEvent);
 
     expect(findings).toStrictEqual([]);
@@ -252,6 +266,7 @@ describe("Transaction Volume Anomaly Detection", () => {
   });
 
   it("Should return no findings if there are no transaction volume anomalies for successful internal transactions", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: true });
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 10; i++) {
       await handleTransaction(mockTxEventWithTraces);
@@ -279,6 +294,7 @@ describe("Transaction Volume Anomaly Detection", () => {
   });
 
   it("Should return no findings if there are no transaction volume anomalies for failed internal transactions", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: false });
     mockTxEventWithTraces.traces[0].error = true;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 10; i++) {
@@ -322,13 +338,12 @@ describe("Transaction Volume Anomaly Detection", () => {
     for (let i = 0; i < 10; i++) {
       await handleTransaction(mockTxEvent);
     }
-
+    mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 1600; i++) {
       await handleTransaction(mockTxEvent);
     }
 
-    mockBlockEvent.block.timestamp = 1;
     const findings = await handleBlock(mockBlockEvent);
 
     expect(findings).toStrictEqual([
@@ -363,13 +378,12 @@ describe("Transaction Volume Anomaly Detection", () => {
     for (let i = 0; i < 10; i++) {
       await handleTransaction(mockTxEvent);
     }
-
+    mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 1600; i++) {
       await handleTransaction(mockTxEvent);
     }
 
-    mockBlockEvent.block.timestamp = 1;
     const findings = await handleBlock(mockBlockEvent);
 
     expect(findings).toStrictEqual([
@@ -388,31 +402,41 @@ describe("Transaction Volume Anomaly Detection", () => {
   });
 
   it("Should return findings if there are transaction volume anomalies for successful internal transactions", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: true });
+
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 10; i++) {
       await handleTransaction(mockTxEventWithTraces);
     }
-
     mockBlockEvent.block.timestamp = 5;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 15; i++) {
       await handleTransaction(mockTxEventWithTraces);
     }
-
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 10; i++) {
       await handleTransaction(mockTxEventWithTraces);
     }
-
+    mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 1600; i++) {
       await handleTransaction(mockTxEventWithTraces);
     }
 
-    mockBlockEvent.block.timestamp = 1;
     const findings = await handleBlock(mockBlockEvent);
 
     expect(findings).toStrictEqual([
+      Finding.fromObject({
+        name: "Unusually high number of successful transactions",
+        description: `Significant increase of successful transactions have been observed from 70 to 70`,
+        alertId: "SUCCESSFUL-TRANSACTION-VOL-INCREASE",
+        severity: FindingSeverity.Low,
+        type: FindingType.Suspicious,
+        metadata: {
+          COUNT: 1600,
+          EXPECTED_BASELINE: 10,
+        },
+      }),
       Finding.fromObject({
         name: "Unusually high number of successful internal transactions",
         description: `Significant increase of successful internal transactions have been observed from 70 to 70`,
@@ -428,6 +452,7 @@ describe("Transaction Volume Anomaly Detection", () => {
   });
 
   it("Should return findings if there are transaction volume anomalies for failed internal transactions", async () => {
+    mockGetTxReceipt.mockReturnValue({ status: false });
     mockTxEventWithTraces.traces[0].error = true;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 10; i++) {
@@ -439,7 +464,7 @@ describe("Transaction Volume Anomaly Detection", () => {
     for (let i = 0; i < 15; i++) {
       await handleTransaction(mockTxEventWithTraces);
     }
-
+    mockBlockEvent.block.timestamp = 1;
     await handleBlock(mockBlockEvent);
     for (let i = 0; i < 10; i++) {
       await handleTransaction(mockTxEventWithTraces);
@@ -450,10 +475,19 @@ describe("Transaction Volume Anomaly Detection", () => {
       await handleTransaction(mockTxEventWithTraces);
     }
 
-    mockBlockEvent.block.timestamp = 1;
     const findings = await handleBlock(mockBlockEvent);
-
     expect(findings).toStrictEqual([
+      Finding.fromObject({
+        name: "Unusually high number of failed transactions",
+        description: `Significant increase of failed transactions have been observed from  70 to 70`,
+        alertId: "FAILED-TRANSACTION-VOL-INCREASE",
+        severity: FindingSeverity.High,
+        type: FindingType.Exploit,
+        metadata: {
+          COUNT: 1600,
+          EXPECTED_BASELINE: 10,
+        },
+      }),
       Finding.fromObject({
         name: "Unusually high number of failed internal transactions",
         description: `Significant increase of failed internal transactions have been observed from 70 to 70`,
