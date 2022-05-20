@@ -220,4 +220,22 @@ module.exports = {
         return contractsARBITRUM;
     }
   },
+  getBlocktimeByChainId: (chainId) => {
+    switch (chainId) {
+      case 1:
+        return 14;
+      case 137:
+        return 2.7;
+      case 43114:
+        return 3;
+      case 56:
+        return 3;
+      case 10:
+        return 13;
+      case 42161:
+        return 15;
+      case 250:
+        return 1.2;
+    }
+  },
 };

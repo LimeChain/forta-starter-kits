@@ -10,6 +10,7 @@ const {
   getContractsByChainId,
   globalSensitivity,
   bucketBlockSize,
+  getBlocktimeByChainId,
 } = require("./agent.config");
 
 const ARIMA_SETTINGS = {
@@ -22,10 +23,11 @@ const ARIMA_SETTINGS = {
   s: 50,
   verbose: false,
 };
+let blockTime = 0;
 const ARIMA = require("arima");
 const provider = getEthersProvider();
 const contractTracker = {};
-const timestampThreshold = bucketBlockSize * 60 * 60 * 60; // The timestamp time in seconds based on the bucket block size and blockTime
+let timestampThreshold = 0; // The timestamp time in seconds based on the bucket block size and blockTime
 
 let contractsForChain = [];
 let isFirstBlock = true;
@@ -38,7 +40,9 @@ let localFindings = [];
 const initialize = async () => {
   const { chainId } = await provider.getNetwork();
   contractsForChain = getContractsByChainId(chainId);
-
+  blockTime = getBlocktimeByChainId(chainId);
+  timestampThreshold = bucketBlockSize * blockTime;
+  ARIMA_SETTINGS.s = (bucketBlockSize * blockTime) / 4;
   for (let contract of contractsForChain) {
     contractTracker[contract] = {
       successfulTx: {
