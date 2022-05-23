@@ -9,9 +9,11 @@ const {
 const {
   getContractsByChainId,
   globalSensitivity,
-  bucketBlockSize,
   getBlocktimeByChainId,
+  getMinBucketBlockSizeByChainId,
 } = require("./agent.config");
+
+let { bucketBlockSize } = require("./agent.config");
 
 const ARIMA_SETTINGS = {
   p: 2,
@@ -41,8 +43,22 @@ const initialize = async () => {
   const { chainId } = await provider.getNetwork();
   contractsForChain = getContractsByChainId(chainId);
   blockTime = getBlocktimeByChainId(chainId);
+  const minBlockSize = getMinBucketBlockSizeByChainId(chainId);
+  if (bucketBlockSize < minBlockSize) {
+    console.warn(
+      `Min bucket block size for chainId: ${chainId} is ${minBlockSize}, setting it to that value`
+    );
+    bucketBlockSize = minBlockSize;
+  }
   timestampThreshold = bucketBlockSize * blockTime;
-  ARIMA_SETTINGS.s = (bucketBlockSize * blockTime) / 4;
+
+  const seasonality = 604_800 / timestampThreshold;
+  if (seasonality > 50) {
+    throw new Error(
+      "Seasonality cannot be greater than 50, please increase bucket block size"
+    );
+  }
+  ARIMA_SETTINGS.s = seasonality;
   for (let contract of contractsForChain) {
     contractTracker[contract] = {
       successfulTx: {

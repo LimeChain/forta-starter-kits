@@ -188,7 +188,25 @@ const contractsARBITRUM = [
 ];
 
 module.exports = {
-  bucketBlockSize: 60,
+  bucketBlockSize: 1000,
+  getMinBucketBlockSizeByChainId: (chainId) => {
+    switch (chainId) {
+      case 1:
+        return 1000;
+      case 56:
+        return 5000;
+      case 137:
+        return 6000;
+      case 43114:
+        return 5000;
+      case 10:
+        return 1200;
+      case 42161:
+        return 1000;
+      case 250:
+        return 12000;
+    }
+  },
   globalSensitivity: 1, // Default is 1, Greater than 1 will increase detections, lower than 1 will decrease detections
   getContractsByChainId: (chainId) => {
     switch (chainId) {
