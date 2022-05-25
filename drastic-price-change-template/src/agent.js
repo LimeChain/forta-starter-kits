@@ -53,6 +53,7 @@ function provideHandleBlock(
     // Check the price once every INTERVAL
     if (timestamp < lastTimestamp + INTERVAL) return findings;
 
+    // Get the price from chainlink and coingecko
     const [chainlinkPrice, coingeckoPrice] = await Promise.all([
       getChainlinkPriceFn(chainlinkContract, assetDecimals),
       getCoingeckoPriceFn(asset.coingeckoId),
@@ -72,6 +73,7 @@ function provideHandleBlock(
       }));
     }
 
+    // Only check for anomaly if we have enough data
     if (timeSeries.length > 10) {
       arima.train(timeSeries);
       const [pred, err] = arima.predict(1).flat();
@@ -91,7 +93,7 @@ function provideHandleBlock(
       }
     }
 
-    // Only keep the data for the last ~1 year
+    // Keep the data for the last ~1 year
     if (timeSeries.length > 8760) timeSeries.shift();
 
     timeSeries.push(chainlinkPrice);
