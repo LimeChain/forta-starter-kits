@@ -1,7 +1,7 @@
 {
-  "name": "forta-agent-starter",
+  "name": "drastic-price-change-anomaly-bot",
   "version": "0.0.1",
-  "description": "Forta Agent Javascript starter project",
+  "description": "Detects if the price of an asset changes drastically or there is a large discrepancy between an on-chain and an off-chain oracle",
   "chainIds": [
     1
   ],

@@ -21,16 +21,19 @@ let lastTimestamp = 0;
 let chainlinkContract;
 let assetDecimals;
 
+// Parameters chosen by finding the model with lowest error and fastest time
+// using the hourly uniswap price from coingecko
 const arima = new ARIMA({
-  p: 1,
+  p: 5,
   d: 1,
-  q: 0,
+  q: 5,
   verbose: false,
 });
 
 function provideInitialize(getChainlinkContractFn) {
   return async function initialize() {
     if (!asset.chainlinkFeedAddress) throw new Error('You need to provide chainlink oracle address');
+    if (!asset.coingeckoId) throw new Error('You need to provide coingecko id');
 
     // Get asset decimals
     chainlinkContract = getChainlinkContractFn(asset.chainlinkFeedAddress);
@@ -87,6 +90,10 @@ function provideHandleBlock(
         }));
       }
     }
+
+    // Only keep the data for the last ~1 year
+    if (timeSeries.length > 8760) timeSeries.shift();
+
     timeSeries.push(chainlinkPrice);
     lastTimestamp = timestamp;
     return findings;
