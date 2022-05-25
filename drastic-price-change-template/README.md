@@ -22,6 +22,4 @@ This bot detects if the price of an asset changes drastically or there is a larg
 
 ## Test Data
 
-The agent behaviour can be verified with the following transactions:
-
-- 0x3a0f757030beec55c22cbc545dd8a844cbbb2e6019461769e1bc3f3a95d10826 (15,000 USDT)
+The agent behaviour can be verified with the provided unit tests
