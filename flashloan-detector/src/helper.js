@@ -136,9 +136,6 @@ module.exports = {
 
         const usdPrice = response.data[address].usd;
 
-        // We cache the price for all assets so we can use it when calculating the borrowed value
-        cachedPrices[address] = usdPrice;
-
         const tokenAmount = ethers.utils.formatUnits(profit, tokenDecimals[address]);
         return tokenAmount * usdPrice;
       }));
@@ -157,16 +154,17 @@ module.exports = {
     return tokenAmount * usdPrice;
   },
   async calculateBorrowedAmount(asset, amount, chain) {
-    let usdPrice = cachedPrices[asset];
+    const response = await axios.get(getTokenPrice(chain, asset));
+    const usdPrice = response.data[asset].usd;
+    cachedPrices[asset] = usdPrice;
 
-    // Fetch the price from CoinGecko if it isn't cached
-    if (!usdPrice) {
-      const response = await axios.get(getTokenPrice(chain, asset));
-      usdPrice = response.data[asset].usd;
-      cachedPrices[asset] = usdPrice;
+    if (!tokenDecimals[asset]) {
+      const contract = new Contract(asset, ABI);
+      const [decimals] = await ethcallProvider.all([contract.decimals()]);
+      tokenDecimals[asset] = decimals;
     }
-    const tokenAmount = ethers.utils.formatUnits(amount, tokenDecimals[asset]);
 
+    const tokenAmount = ethers.utils.formatUnits(amount, tokenDecimals[asset]);
     return tokenAmount * usdPrice;
   },
   clear() {
