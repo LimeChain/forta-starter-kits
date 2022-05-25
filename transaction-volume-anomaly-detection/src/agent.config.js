@@ -187,6 +187,31 @@ const contractsARBITRUM = [
   "0x25e2e8d104BC1A70492e2BE32dA7c1f8367F9d2c",
 ];
 
+const contractsFantom = [
+  "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+  "0x77a44081c37f2e3e70c2a2C5F589cDEaE27F6d17",
+  "0x16327E3FbDaCA3bcF7E38F5Af2599D2DDc33aE52",
+  "0xfD000ddCEa75a2E23059881c3589F6425bFf1AbB",
+  "0xF491e7B69E4244ad4002BC14e878a34207E38c29",
+  "0x53c153a0df7E050BbEFbb70eE9632061f12795fB",
+  "0x1CcCA1cE62c62F7Be95d4A67722a8fDbed6EEcb4",
+  "0xb9799De71100e20aC1cdbCc63C69ddA2D0D81710",
+];
+
+const contractsAvalanche = [
+  "0x60aE616a2155Ee3d9A68541Ba4544862310933d4",
+  "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
+  "0x8Efa5A9AD6D594Cf76830267077B78cE0Bc5A5F8",
+  "0x262DcFB36766C88E6A7a2953c16F8defc40c378A",
+  "0x06f8ED60393AC6A4B16900273C9313222dfe9940",
+  "0xA52aBE4676dbfd04Df42eF7755F01A3c41f28D27",
+  "0x771ad65bF2837C89A1CC0A0FC601d9De7f217b52",
+  "0xff164Ede3E7C375E8764E9e3a22D3E35F780EEBC",
+  "0xDEF171Fe48CF0115B1d80b88dc8eAB59176FEe57",
+  "0x92cf2d93214aB6Bbb30665e6c39ADFDB5a50d8B2",
+  "0x2EcF2a2e74B19Aab2a62312167aFF4B78E93B6C5",
+];
+
 module.exports = {
   bucketBlockSize: 1000,
   getMinBucketBlockSizeByChainId: (chainId) => {
@@ -236,6 +261,10 @@ module.exports = {
         return contractsPolygon;
       case 42161:
         return contractsARBITRUM;
+      case 250:
+        return contractsFantom;
+      case 43114:
+        return contractsAvalanche;
     }
   },
   getBlocktimeByChainId: (chainId) => {

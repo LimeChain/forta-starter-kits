@@ -4,6 +4,16 @@
 
 This bot detects Transactions with Anomalies in Volume
 
+## Arima Configuration Settings Description:
+
+- p - the number of lag observations (probably > 1 because there is a lot of variance)
+- d - the number of times that the raw observations are differenced (probably 0)
+- q - the size of the moving average window (probably > 1 because there is a lot of variance)
+- P - the number of seasonal lag observations (2 because we want to check the last 2 weeks)
+- D - the number of seasonal differences (probably 0)
+- Q - the number of seasonal moving average window (2 because we want to check the last 2 weeks)
+- s - The number of time steps for a single seasonal period (should be selected such that 1 season is 1 week)
+
 ## Supported Chains
 
 - Ethereum
@@ -11,6 +21,8 @@ This bot detects Transactions with Anomalies in Volume
 - Polygon
 - Optimism
 - Arbitrum
+- Avalanche
+- Fantom
 
 ## Alerts
 
