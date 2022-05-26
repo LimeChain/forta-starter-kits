@@ -5,7 +5,7 @@ const {
 } = require('forta-agent');
 const ARIMA = require('arima');
 
-const { priceDiscrepancyThreshold, asset } = require('./agent.config');
+const { priceDiscrepancyThreshold, asset } = require('../bot-config.json');
 const {
   getChainlinkPrice,
   getCoingeckoPrice,
@@ -32,8 +32,13 @@ const arima = new ARIMA({
 
 function provideInitialize(getChainlinkContractFn) {
   return async function initialize() {
-    if (!asset.chainlinkFeedAddress) throw new Error('You need to provide chainlink oracle address');
-    if (!asset.coingeckoId) throw new Error('You need to provide coingecko id');
+    if (!priceDiscrepancyThreshold
+        || !asset
+        || !asset.chainlinkFeedAddress
+        || !asset.coingeckoId
+        || !asset.contract) {
+      throw new Error('You need to provide valid config file');
+    }
 
     // Get asset decimals
     chainlinkContract = getChainlinkContractFn(asset.chainlinkFeedAddress);
@@ -78,6 +83,7 @@ function provideHandleBlock(
       arima.train(timeSeries);
       const [pred, err] = arima.predict(1).flat();
 
+      // Calculate the 95% confidence interval
       const [low, high] = [pred - 1.96 * Math.sqrt(err), pred + 1.96 * Math.sqrt(err)];
 
       if (chainlinkPrice < low || chainlinkPrice > high) {

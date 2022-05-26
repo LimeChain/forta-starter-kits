@@ -6,7 +6,12 @@ const {
   Finding,
 } = require('forta-agent');
 const { provideHandleBlock, resetLastTimestamp } = require('./agent');
-const { asset } = require('./agent.config');
+
+const asset = { contract: '0xcontract' };
+jest.mock('../bot-config.json', () => ({
+  asset,
+  priceDiscrepancyThreshold: 10,
+}), { virtual: true });
 
 describe('drastic price change bot', () => {
   describe('handleBlock', () => {
