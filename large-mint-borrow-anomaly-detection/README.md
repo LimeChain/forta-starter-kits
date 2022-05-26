@@ -2,7 +2,7 @@
 
 ## Description
 
-This agent detects Transactions with Anomalies in Volume for Mints/Borrows
+This bot detects Transactions with Anomalies in Volume for Mints/Borrows
 
 ## Supported Chains
 
@@ -40,4 +40,4 @@ This agent detects Transactions with Anomalies in Volume for Mints/Borrows
 
 ## Test Data
 
-The agent behaviour can be verified with supplied unit tests
+The bot behaviour can be verified with supplied unit tests
