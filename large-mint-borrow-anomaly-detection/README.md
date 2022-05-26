@@ -11,6 +11,8 @@ This agent detects Transactions with Anomalies in Volume for Mints/Borrows
 - Polygon
 - Optimism
 - Arbitrum
+- Avalanche
+- Fantom
 
 ## Alerts
 
