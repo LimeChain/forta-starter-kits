@@ -2,27 +2,66 @@ const {
   Finding,
   FindingSeverity,
   FindingType,
-
+  getEthersProvider,
   ethers,
 } = require("forta-agent");
 
 const {
-  bucketBlockSize,
   commonEventSigs,
   limitTracked,
+  getMinBucketBlockSizeByChainId,
+  getBlocktimeByChainId,
 } = require("./agent.config");
 
+let { bucketBlockSize } = require("./agent.config");
+
+const ARIMA_CONFIG = {
+  p: 2,
+  d: 1,
+  q: 2,
+  P: 1,
+  D: 0,
+  Q: 1,
+  s: 5,
+  verbose: false,
+};
 const ADDRESS_ZERO = ethers.constants.AddressZero;
 const TimeAnomalyDetection = require("./TimeAnomalyDetection");
 const trackerBuckets = [];
+const provider = getEthersProvider();
+
 let isRunningJob = false;
 let localFindings = [];
+let aggregationTimePeriod = 1; //The period that is calculated by bucketBlockSize * blockTime
+let blockTime = 0;
+
+const initialize = async () => {
+  const { chainId } = await provider.getNetwork();
+  const minBlockSize = getMinBucketBlockSizeByChainId(chainId);
+  blockTime = getBlocktimeByChainId(chainId);
+  if (bucketBlockSize < minBlockSize) {
+    console.warn(
+      `Min bucket block size for chainId: ${chainId} is ${minBlockSize}, setting it to that value`
+    );
+    bucketBlockSize = minBlockSize;
+  }
+  aggregationTimePeriod = bucketBlockSize * blockTime;
+  const seasonality = 604_800 / aggregationTimePeriod; // Calculate the seasonality for a week based on the aggregation time period
+  ARIMA_CONFIG.s = seasonality;
+};
 
 const createTrackerBucket = (address, trackerBuckets) => {
   if (trackerBuckets.length > limitTracked) {
     trackerBuckets.shift();
   }
-  trackerBuckets.push(new TimeAnomalyDetection(address, bucketBlockSize));
+  const timeSeriesTemp = new TimeAnomalyDetection(
+    address,
+    aggregationTimePeriod,
+    bucketBlockSize,
+    ARIMA_CONFIG
+  );
+
+  trackerBuckets.push(timeSeriesTemp);
 };
 
 const alreadyTracked = (address, trackerBuckets) => {
@@ -54,12 +93,12 @@ function provideHandleTransaction(trackerBuckets) {
 
           if (index != -1) {
             const TimeSeriesAnalysisForTX = trackerBuckets[index];
-            TimeSeriesAnalysisForTX.AddMintTx(txEvent, value);
+            TimeSeriesAnalysisForTX.addMintTx(txEvent, value);
           } else if (index == -1) {
             createTrackerBucket(to, trackerBuckets);
             const TimeSeriesAnalysisForTX =
               trackerBuckets[trackerBuckets.length - 1];
-            TimeSeriesAnalysisForTX.AddMintTx(txEvent, value);
+            TimeSeriesAnalysisForTX.addMintTx(txEvent, value);
           }
         }
       } else if (_reserve) {
@@ -67,34 +106,34 @@ function provideHandleTransaction(trackerBuckets) {
 
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, _amount);
+          TimeSeriesAnalysisForTX.addBorrowTx(txEvent, _amount);
         } else if (index == -1) {
           createTrackerBucket(_user, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, _amount);
+          TimeSeriesAnalysisForTX.addBorrowTx(txEvent, _amount);
         }
       } else if (minter) {
         const index = alreadyTracked(minter, trackerBuckets);
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
-          TimeSeriesAnalysisForTX.AddMintTx(txEvent, mintTokens);
+          TimeSeriesAnalysisForTX.addMintTx(txEvent, mintTokens);
         } else if (index == -1) {
           createTrackerBucket(minter, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
-          TimeSeriesAnalysisForTX.AddMintTx(txEvent, mintTokens);
+          TimeSeriesAnalysisForTX.addMintTx(txEvent, mintTokens);
         }
       } else if (borrower) {
         const index = alreadyTracked(borrower, trackerBuckets);
         if (index != -1) {
           const TimeSeriesAnalysisForTX = trackerBuckets[index];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, borrowAmount);
+          TimeSeriesAnalysisForTX.addBorrowTx(txEvent, borrowAmount);
         } else if (index == -1) {
           createTrackerBucket(borrower, trackerBuckets);
           const TimeSeriesAnalysisForTX =
             trackerBuckets[trackerBuckets.length - 1];
-          TimeSeriesAnalysisForTX.AddBorrowTx(txEvent, borrowAmount);
+          TimeSeriesAnalysisForTX.addBorrowTx(txEvent, borrowAmount);
         }
       }
     }
@@ -125,50 +164,50 @@ async function runJob(trackerBuckets) {
   const findings = [];
 
   for (let tracker of trackerBuckets) {
-    const mintSTD = tracker.GetSTDLatestForMintBucket();
-    const borrowSTD = tracker.GetSTDLatestForBorrowBucket();
+    if (tracker.isTrainedMints) {
+      const count = tracker.getCurrentMintedCount();
+      const [low, high] = tracker.getLowAndHighMints();
 
-    const normalMarginForMints = tracker.GetMarginForMintBucket();
-    const normalMarginForBorrows = tracker.GetMarginForBorrowBucket();
-    const isFullMintBucket = tracker.GetIsFullMintBucket();
-    const isFullBorrowBucket = tracker.GetIsFullBorrowBucket();
-
-    if (Math.floor(mintSTD) > normalMarginForMints && isFullMintBucket) {
-      const findingData = tracker.GetMintsForFlag();
-      findings.push(
-        Finding.fromObject({
-          name: "Large mint volume",
-          description: `${findingData.from_address} minted an unusually high number of ${findingData.numberOfAssets} assets ${findingData.mintedAssetAccount}`,
-          alertId: "HIGH-MINT-VALUE",
-          severity: FindingSeverity.Medium,
-          type: FindingType.Exploit,
-          metadata: {
-            FIRST_TRANSACTION_HASH: findingData.firstTxHash,
-            LAST_TRANSACTION_HASH: findingData.lastTxHash,
-            ASSET_IMPACTED: findingData.mintedAssetAccount,
-            BASELINE_VOLUME: findingData.baseline,
-          },
-        })
-      );
+      if (count > high) {
+        const findingData = tracker.getMintsForFlag();
+        findings.push(
+          Finding.fromObject({
+            name: "Large mint volume",
+            description: `${findingData.from_address} minted an unusually high number of ${findingData.numberOfAssets} assets ${findingData.mintedAssetAccount}`,
+            alertId: "HIGH-MINT-VALUE",
+            severity: FindingSeverity.Medium,
+            type: FindingType.Exploit,
+            metadata: {
+              FIRST_TRANSACTION_HASH: findingData.firstTxHash,
+              LAST_TRANSACTION_HASH: findingData.lastTxHash,
+              ASSET_IMPACTED: findingData.mintedAssetAccount,
+              BASELINE_VOLUME: Math.floor(low),
+            },
+          })
+        );
+      }
     }
-
-    if (Math.floor(borrowSTD) > normalMarginForBorrows && isFullBorrowBucket) {
-      const findingData = tracker.GetBorrowsForFlag();
-      findings.push(
-        Finding.fromObject({
-          name: "Large borrow volume",
-          description: `${findingData.from_address} borrowed an unusually high number of ${findingData.numberOfAssets} assets ${findingData.borrowedAssetAccount}`,
-          alertId: "HIGH-BORROW-VALUE",
-          severity: FindingSeverity.Medium,
-          type: FindingType.Exploit,
-          metadata: {
-            FIRST_TRANSACTION_HASH: findingData.firstTxHash,
-            LAST_TRANSACTION_HASH: findingData.lastTxHash,
-            ASSET_IMPACTED: findingData.borrowedAssetAccount,
-            BASELINE_VOLUME: findingData.baseline,
-          },
-        })
-      );
+    if (tracker.isTrainedBorrows) {
+      const count = tracker.getCurrentBorrowedCount();
+      const [low, high] = tracker.getLowAndHighBorrows();
+      if (count > high) {
+        const findingData = tracker.getBorrowsForFlag();
+        findings.push(
+          Finding.fromObject({
+            name: "Large borrow volume",
+            description: `${findingData.from_address} borrowed an unusually high number of ${findingData.numberOfAssets} assets ${findingData.borrowedAssetAccount}`,
+            alertId: "HIGH-BORROW-VALUE",
+            severity: FindingSeverity.Medium,
+            type: FindingType.Exploit,
+            metadata: {
+              FIRST_TRANSACTION_HASH: findingData.firstTxHash,
+              LAST_TRANSACTION_HASH: findingData.lastTxHash,
+              ASSET_IMPACTED: findingData.borrowedAssetAccount,
+              BASELINE_VOLUME: low,
+            },
+          })
+        );
+      }
     }
   }
 
@@ -177,6 +216,7 @@ async function runJob(trackerBuckets) {
 }
 
 module.exports = {
+  initialize,
   handleTransaction: provideHandleTransaction(trackerBuckets),
   handleBlock: provideHandleBlock(trackerBuckets),
   provideHandleTransaction,

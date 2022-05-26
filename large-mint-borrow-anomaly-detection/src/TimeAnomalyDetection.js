@@ -12,319 +12,197 @@ Here's a brief explanation of how this class works:
     - Add standardDeviation to MintStandardDeviationsForRange
 - If its a borrow we do the same as mint but to the correct fields
 */
-
-const { default: BigNumber } = require("bignumber.js");
-const RollingMath = require("rolling-math");
-
+const ARIMA = require("arima");
 class TimeAnomalyDetection {
-  constructor(addressTracked, aggregationTimePeriod) {
+  constructor(
+    addressTracked,
+    aggregationTimePeriod,
+    bucketBlockSize,
+    ARIMA_CONFIG
+  ) {
     this.addressTracked = addressTracked;
+    this.startTimestampMints = 0;
+    this.startTimestampBorrows = 0;
     this.aggregationTimePeriod = aggregationTimePeriod;
-    this.mintBucket = new RollingMath(aggregationTimePeriod);
-    this.borrowBucket = new RollingMath(aggregationTimePeriod);
-    this.totalMinted = 0;
-    this.totalBorrowed = 0;
-    this.MintStandardDeviationsForRange = [];
-    this.BorrowStandardDeviationsForRange = [];
-    this.mintsForRange = 0;
-    this.borrowsForRange = 0;
-    this.totalAssetsMinted = 0;
-    this.totalAssetsBorrowed = 0;
+    this.mintBucket = new ARIMA(ARIMA_CONFIG);
+    this.borrowBucket = new ARIMA(ARIMA_CONFIG);
+    this.totalAssetsMinted = [];
+    this.totalAssetsBorrowed = [];
+    this.totalBorrowsForRange = 0;
+    this.totalMintsForRange = 0;
     this.trackingMints = [];
     this.trackingBorrows = [];
-    this.lastBlock = 0;
-    this.currentBlock = 0;
-    this.maxTracked = 10000;
+    this.maxTracked = bucketBlockSize;
+    this.isTrainedMints = false;
+    this.isTrainedBorrows = false;
   }
 
-  AddMintTx(tx, totalMinted) {
-    if (tx.block.number != this.currentBlock && this.currentBlock != 0) {
-      this.UpdateBlock(tx.block.number);
-      this.AddToMintBucket();
-      this.totalMinted += totalMinted;
-    } else if (tx.block.number == this.currentBlock) {
-      this.totalMinted += totalMinted;
-    } else if (this.currentBlock == 0) {
-      this.totalMinted += totalMinted;
-      this.UpdateCurrentBlock(tx.block.number);
+  addMintTx(tx, totalMinted) {
+    if (this.startTimestampMints == 0) {
+      this.startTimestampMints = tx.block.timestamp;
+      this.totalAssetsMinted.push(totalMinted);
+      this.addToMints(tx.to, tx.from, tx.transaction.hash, totalMinted);
+      return;
     }
-    this.AddToMints(tx.to, tx.from, tx.transaction.hash);
+    if (
+      tx.block.timestamp - this.startTimestampMints <=
+        this.aggregationTimePeriod &&
+      !this.isTrainedMints
+    ) {
+      this.trainMints();
+      this.addToMints(tx.to, tx.from, tx.transaction.hash, totalMinted);
+      this.startTimestampMints = tx.block.timestamp;
+    } else {
+      this.totalAssetsMinted.push(totalMinted);
+      this.addToMints(tx.to, tx.from, tx.transaction.hash, totalMinted);
+    }
   }
 
-  AddBorrowTx(tx, totalBorrowed) {
-    if (tx.block.number != this.currentBlock && this.currentBlock != 0) {
-      this.UpdateBlock(tx.block.number);
-      this.AddToBorrowBucket();
-      this.totalBorrowed += totalBorrowed;
-    } else if (tx.block.number == this.currentBlock) {
-      this.totalBorrowed += totalBorrowed;
-    } else if (this.currentBlock == 0) {
-      this.totalBorrowed += totalBorrowed;
-
-      this.UpdateCurrentBlock(tx.block.number);
+  addBorrowTx(tx, totalBorrowed) {
+    if (this.startTimestampBorrows == 0) {
+      this.startTimestampBorrows = tx.block.timestamp;
+      this.totalAssetsBorrowed.push(totalBorrowed);
+      this.addToBorrows(tx.to, tx.from, tx.transaction.hash);
+      return;
     }
-    this.AddToBorrows(tx.to, tx.from, tx.transaction.hash);
+    if (
+      tx.block.timestamp - this.startTimestampBorrows <=
+        this.aggregationTimePeriod &&
+      !this.isTrainedBorrows
+    ) {
+      this.trainBorrows();
+      this.addToBorrows(tx.to, tx.from, tx.transaction.hash, totalBorrowed);
+      this.startTimestampBorrows = tx.block.timestamp;
+    } else {
+      this.totalAssetsBorrowed.push(totalBorrowed);
+      this.addToBorrows(tx.to, tx.from, tx.transaction.hash, totalBorrowed);
+    }
   }
 
-  AddToMints(mintedAssetAccount, minterAccount, txHash, blockNumber) {
-    this.mintsForRange++;
-    const found = this.trackingMints.find(
-      (t) => t.mintedAssetAccount == mintedAssetAccount
-    );
-    if (!found) {
-      this.totalAssetsMinted++;
-    }
+  addToMints(
+    mintedAssetAccount,
+    minterAccount,
+    txHash,
 
-    const trackingObject = {
-      mintedAssetAccount,
-      minterAccount,
-      txHash,
-      blockNumber,
-    };
+    totalMinted
+  ) {
+    this.totalMintsForRange++;
+
     if (this.trackingMints.length > this.maxTracked) {
       this.trackingMints.shift();
     }
-    this.trackingMints.push(trackingObject);
-    this.CheckForPassedThresholdMints();
+    const found = this.trackingMints.findIndex(
+      (t) => t.mintedAssetAccount == mintedAssetAccount
+    );
+    if (found == -1) {
+      const trackingObject = {
+        mintedAssetAccount,
+        minterAccount,
+        totalMinted,
+        txHash,
+      };
+      this.trackingMints.push(trackingObject);
+    } else {
+      this.trackingMints[found].totalMinted = totalMinted;
+    }
   }
 
-  AddToBorrows(borrowedAssetAccount, borrowerAccount, txHash, blockNumber) {
-    this.borrowsForRange++;
-    const found = this.trackingBorrows.find(
+  addToBorrows(
+    borrowedAssetAccount,
+    borrowerAccount,
+    txHash,
+
+    totalBorrowed
+  ) {
+    this.totalBorrowsForRange++;
+    const found = this.trackingBorrows.findIndex(
       (t) => t.borrowedAssetAccount == borrowedAssetAccount
     );
-    if (!found) {
-      this.totalAssetsBorrowed++;
+    if (found == -1) {
+      const trackingObject = {
+        borrowedAssetAccount,
+        borrowerAccount,
+        totalBorrowed,
+        txHash,
+      };
+      this.trackingBorrows.push(trackingObject);
+    } else {
+      this.trackingBorrows[found].totalBorrowed = totalBorrowed;
     }
-
-    const trackingObject = {
-      borrowedAssetAccount,
-      borrowerAccount,
-      txHash,
-      blockNumber,
-    };
     if (this.trackingBorrows.length > this.maxTracked) {
       this.trackingBorrows.shift();
     }
-    this.trackingBorrows.push(trackingObject);
-    this.CheckForPassedThresholdBorrows();
   }
 
-  CheckForPassedThresholdMints() {
-    const trackedToRemove = [];
-    let totalMintsRemoved = [];
-    for (let t of this.trackingMints) {
-      if (this.currentBlock + this.aggregationTimePeriod > t.blockNumber) {
-        trackedToRemove.push(t);
-      }
-    }
-    totalMintsRemoved = trackedToRemove.filter((item, pos) => {
-      return trackedToRemove.indexOf(item) == pos;
-    });
-    this.trackingMints = this.trackingMints.filter(
-      (t) => !trackedToRemove.includes(t)
-    );
-
-    //Decrease total mints for range by the amount of removed approvals that expired
-    this.totalAssetsMinted = this.totalAssetsMinted - totalMintsRemoved.length;
-
-    //Decrease the total count of assets minted by the amount removed that expired
-    // this. =
-    this.mintsForRange = this.mintsForRange - trackedToRemove.length;
+  trainMints() {
+    this.mintBucket.train(this.totalAssetsMinted);
+    this.isTrainedMints = true;
   }
 
-  CheckForPassedThresholdBorrows() {
-    const trackedToRemove = [];
-    let totalBorrowsRemoved = [];
-    for (let t of this.trackingBorrows) {
-      if (this.currentBlock + this.aggregationTimePeriod > t.blockNumber) {
-        trackedToRemove.push(t);
-      }
-    }
-    totalBorrowsRemoved = trackedToRemove.filter((item, pos) => {
-      return trackedToRemove.indexOf(item) == pos;
-    });
-    this.trackingBorrows = this.trackingBorrows.filter(
-      (t) => !trackedToRemove.includes(t)
-    );
-
-    //Decrease total mints for range by the amount of removed approvals that expired
-    this.totalAssetsBorrowed =
-      this.totalAssetsBorrowed - totalBorrowsRemoved.length;
-
-    //Decrease the total count of assets minted by the amount removed that expired
-    // this. =
-    this.borrowsForRange = this.borrowsForRange - trackedToRemove.length;
+  trainBorrows() {
+    this.borrowBucket.train(this.totalAssetsBorrowed);
+    this.isTrainedBorrows = true;
   }
 
-  AddToMintBucket() {
-    this.mintBucket.addElement(new BigNumber(this.totalMinted));
-    if (
-      this.MintStandardDeviationsForRange.length > this.aggregationTimePeriod
-    ) {
-      this.MintStandardDeviationsForRange.shift();
-    }
+  getLowAndHighMints() {
+    const [pred, error] = this.mintBucket.predict(1);
 
-    if (
-      this.MintStandardDeviationsForRange.length > this.aggregationTimePeriod
-    ) {
-      this.MintStandardDeviationsForRange.shift();
-    }
-
-    this.MintStandardDeviationsForRange.push(
-      this.mintBucket.getStandardDeviation().toNumber()
-    );
-
-    this.totalMinted = 0;
+    return [
+      pred[0] - 1.96 * Math.sqrt(error[0]),
+      pred[0] + 1.96 * Math.sqrt(error[0]),
+    ];
   }
 
-  AddToBorrowBucket() {
-    this.borrowBucket.addElement(new BigNumber(this.totalBorrowed));
-    if (
-      this.BorrowStandardDeviationsForRange.length > this.aggregationTimePeriod
-    ) {
-      this.BorrowStandardDeviationsForRange.shift();
-    }
-
-    if (
-      this.BorrowStandardDeviationsForRange.length > this.aggregationTimePeriod
-    ) {
-      this.BorrowStandardDeviationsForRange.shift();
-    }
-
-    this.BorrowStandardDeviationsForRange.push(
-      this.borrowBucket.getStandardDeviation().toNumber()
-    );
-
-    this.totalBorrowed = 0;
+  getLowAndHighBorrows() {
+    const [pred, error] = this.borrowBucket.predict(1);
+    return [
+      pred[0] - 1.96 * Math.sqrt(error[0]),
+      pred[0] + 1.96 * Math.sqrt(error[0]),
+    ];
   }
 
-  UpdateBlock(blockNumber) {
-    if (this.currentBlock != this.lastBlock) {
-      this.lastBlock = this.currentBlock;
-      this.currentBlock = blockNumber;
-    }
+  getCurrentMintedCount() {
+    return this.trackingMints[this.trackingMints.length - 1].totalMinted;
   }
 
-  UpdateCurrentBlock(blockNumber) {
-    this.currentBlock = blockNumber;
+  getCurrentBorrowedCount() {
+    return this.trackingBorrows[this.trackingBorrows.length - 1].totalBorrowed;
   }
 
-  GetSTDLatestForMintBucket() {
-    return this.mintBucket.getStandardDeviation().toNumber();
-  }
-
-  GetSTDLatestForBorrowBucket() {
-    return this.borrowBucket.getStandardDeviation().toNumber();
-  }
-
-  GetTotalForLastMintBucket() {
-    return this.mintBucket.getSum().toNumber();
-  }
-
-  GetTotalForLastBorrowBucket() {
-    return this.borrowBucket.getSum().toNumber();
-  }
-
-  GetBaselineForLastMintBucket() {
-    return this.mintBucket.getAverage().toNumber();
-  }
-
-  GetBaselineForLastBorrowBucket() {
-    return this.borrowBucket.getAverage().toNumber();
-  }
-
-  //We need the SMA to calculate the EMA for all transactions
-  SimpleMovingAverage(prices, window, n = Infinity) {
-    let index = window - 1;
-    const length = prices.length + 1;
-
-    const simpleMovingAverages = [];
-
-    let numberOfSMAsCalculated = 0;
-
-    while (++index < length && numberOfSMAsCalculated++ < n) {
-      const windowSlice = prices.slice(index - window, index);
-      const sum = windowSlice.reduce((prev, curr) => prev + curr, 0);
-      simpleMovingAverages.push(sum / window);
-    }
-
-    return simpleMovingAverages;
-  }
-
-  GetNormalMarginOfDifferences(stdForAll) {
-    let marginCurrent = 0;
-
-    let index = this.aggregationTimePeriod - 1;
-    const length = stdForAll.length;
-    let previousEmaIndex = 0;
-    const smoothingFactor = 2 / (this.aggregationTimePeriod + 1);
-    const exponentialMovingAvg = [];
-    const [sma] = this.SimpleMovingAverage(
-      stdForAll,
-      this.aggregationTimePeriod,
-      1
-    );
-    exponentialMovingAvg.push(sma);
-    while (++index < length) {
-      const value = stdForAll[index];
-      const previousEma = exponentialMovingAvg[previousEmaIndex++];
-      const currentEma = (value - previousEma) * smoothingFactor + previousEma;
-      exponentialMovingAvg.push(currentEma);
-    }
-
-    marginCurrent =
-      (exponentialMovingAvg[exponentialMovingAvg.length - 1] -
-        exponentialMovingAvg[0]) /
-        exponentialMovingAvg.length -
-      1;
-
-    return Math.abs(marginCurrent);
-  }
-
-  GetMarginForMintBucket() {
-    return this.GetNormalMarginOfDifferences(
-      this.MintStandardDeviationsForRange
-    );
-  }
-
-  GetMarginForBorrowBucket() {
-    return this.GetNormalMarginOfDifferences(
-      this.BorrowStandardDeviationsForRange
-    );
-  }
-
-  GetIsFullMintBucket() {
-    return this.mintBucket.getNumElements() == this.aggregationTimePeriod;
-  }
-
-  GetIsFullBorrowBucket() {
-    return this.borrowBucket.getNumElements() == this.aggregationTimePeriod;
-  }
-
-  GetMintsForFlag() {
+  getMintsForFlag() {
     return {
       from_address: this.addressTracked,
       mintedAssetAccount:
-        this.trackingMints[this.trackingMints.length - 2].mintedAssetAccount,
-      numberOfAssets: this.totalAssetsMinted,
+        this.trackingMints[this.trackingMints.length - 1].mintedAssetAccount,
+      numberOfAssets:
+        this.trackingMints[this.trackingMints.length - 1].totalMinted,
       firstTxHash: this.trackingMints[0].txHash,
       lastTxHash: this.trackingMints[this.trackingMints.length - 1].txHash,
-      baseline: this.GetBaselineForLastMintBucket(),
     };
   }
 
-  GetBorrowsForFlag() {
+  getBorrowsForFlag() {
     return {
       from_address: this.addressTracked,
       borrowedAssetAccount:
-        this.trackingBorrows[this.trackingBorrows.length - 2]
+        this.trackingBorrows[this.trackingBorrows.length - 1]
           .borrowedAssetAccount,
-      numberOfAssets: this.totalAssetsBorrowed,
+      numberOfAssets:
+        this.trackingBorrows[this.trackingBorrows.length - 1].totalBorrowed,
       firstTxHash: this.trackingBorrows[0].txHash,
-      lastTxHash: this.trackingBorrows[this.trackingBorrows.length - 2].txHash,
-      baseline: this.GetBaselineForLastBorrowBucket(),
+      lastTxHash: this.trackingBorrows[this.trackingBorrows.length - 1].txHash,
     };
+  }
+
+  reset() {
+    this.trackingMints = [];
+    this.trackingBorrows = [];
+    this.totalAssetsBorrowed = [];
+    this.totalAssetsMinted = [];
+    this.totalMintsForRange = 0;
+    this.totalBorrowsForRange = 0;
+    this.isTrainedMints = false;
+    this.isTrainedBorrows = false;
   }
 }
 

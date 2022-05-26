@@ -1,10 +1,31 @@
 const TimeAnomalyDetection = require("./TimeAnomalyDetection");
-
+const ARIMA_CONFIG = {
+  p: 2,
+  d: 1,
+  q: 2,
+  P: 1,
+  D: 0,
+  Q: 1,
+  s: 5,
+  verbose: false,
+};
 describe("Time Anomaly Detection", () => {
-  let TimeAnomalyDetectionTemp = new TimeAnomalyDetection("0x0", 3);
+  let TimeAnomalyDetectionTemp = new TimeAnomalyDetection(
+    "0x0",
+    3,
+    3,
+    ARIMA_CONFIG
+  );
 
   beforeEach(() => {
-    TimeAnomalyDetectionTemp = new TimeAnomalyDetection("0x0", 3);
+    TimeAnomalyDetectionTemp = new TimeAnomalyDetection(
+      "0x0",
+      3,
+      3,
+      ARIMA_CONFIG
+    );
+    TimeAnomalyDetectionTemp.startTimestampMints = 1;
+    TimeAnomalyDetectionTemp.startTimestampBorrows = 1;
   });
 
   it("Should successfully create an instance of the TimeAnomalyDetection object", () => {
@@ -15,6 +36,7 @@ describe("Time Anomaly Detection", () => {
     const mintTxMock = {
       block: {
         number: 1,
+        timestamp: 10,
       },
       to: "0x123",
       from: "0x1234",
@@ -23,18 +45,17 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
-    expect(TimeAnomalyDetectionTemp.totalAssetsMinted).toBe(1);
-    expect(TimeAnomalyDetectionTemp.mintsForRange).toBe(1);
-    expect(TimeAnomalyDetectionTemp.mintBucket.getNumElements()).toBe(0);
-    expect(TimeAnomalyDetectionTemp.currentBlock).toBe(1);
-    expect(TimeAnomalyDetectionTemp.totalMinted).toBe(1);
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMock, 1);
+    expect(TimeAnomalyDetectionTemp.totalAssetsMinted).toStrictEqual([1]);
+    expect(TimeAnomalyDetectionTemp.isTrainedMints).toBe(false);
+    expect(TimeAnomalyDetectionTemp.totalMintsForRange).toBe(1);
   });
 
   it("Should successfully add a borrow tx to the TAD object", () => {
     const borrowTxMock = {
       block: {
         number: 1,
+        timestamp: 10,
       },
       to: "0x123",
       from: "0x1234",
@@ -43,11 +64,10 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock, 1);
-    expect(TimeAnomalyDetectionTemp.totalAssetsBorrowed).toBe(1);
-    expect(TimeAnomalyDetectionTemp.borrowsForRange).toBe(1);
-    expect(TimeAnomalyDetectionTemp.borrowBucket.getNumElements()).toBe(0);
-    expect(TimeAnomalyDetectionTemp.currentBlock).toBe(1);
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMock, 1);
+    expect(TimeAnomalyDetectionTemp.totalAssetsBorrowed).toStrictEqual([1]);
+    expect(TimeAnomalyDetectionTemp.totalBorrowsForRange).toBe(1);
+    expect(TimeAnomalyDetectionTemp.isTrainedBorrows).toBeFalsy();
   });
 
   it("Should increase block number if its changed from tx", () => {
@@ -72,20 +92,19 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock, 1);
-    TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockTwo, 1);
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMock, 1);
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMockTwo, 1);
 
-    expect(TimeAnomalyDetectionTemp.totalAssetsBorrowed).toBe(1);
-    expect(TimeAnomalyDetectionTemp.borrowsForRange).toBe(2);
-    expect(TimeAnomalyDetectionTemp.totalBorrowed).toBe(1);
-    expect(TimeAnomalyDetectionTemp.borrowBucket.getNumElements()).toBe(1);
-    expect(TimeAnomalyDetectionTemp.currentBlock).toBe(2);
+    expect(TimeAnomalyDetectionTemp.totalAssetsBorrowed).toStrictEqual([1, 1]);
+    expect(TimeAnomalyDetectionTemp.totalBorrowsForRange).toBe(2);
+    expect(TimeAnomalyDetectionTemp.isTrainedBorrows).toBeFalsy();
   });
 
-  it("Should successfully fill buckets for mint tx", () => {
+  it("Should successfully train for mint tx", () => {
     const mintTxMock = {
       block: {
         number: 1,
+        timestamp: 10,
       },
       to: "0x123",
       from: "0x1234",
@@ -97,6 +116,7 @@ describe("Time Anomaly Detection", () => {
     const mintTxMockTwo = {
       block: {
         number: 2,
+        timestamp: 10,
       },
       to: "0x123",
       from: "0x1234",
@@ -108,6 +128,7 @@ describe("Time Anomaly Detection", () => {
     const mintTxMockThree = {
       block: {
         number: 3,
+        timestamp: 10,
       },
       to: "0x123",
       from: "0x1234",
@@ -127,23 +148,31 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
-    }
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo, 1);
-    }
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree, 1);
-    }
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour, 1);
-    }
+    const mintTxMockFive = {
+      block: {
+        number: 4,
+        timestamp: 1,
+      },
+      to: "0x123",
+      from: "0x1234",
+      transaction: {
+        hash: "0xx0",
+      },
+    };
 
-    expect(TimeAnomalyDetectionTemp.GetIsFullMintBucket()).toBe(true);
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMock, 1);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockTwo, 5);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockThree, 7);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockFour, 3);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockFive, 2);
+    expect(TimeAnomalyDetectionTemp.isTrainedMints).toBeTruthy();
   });
 
-  it("Should successfully fill buckets for borrow tx", () => {
+  it("Should successfully train for borrow tx", () => {
     const borrowTxMock = {
       block: {
         number: 1,
@@ -188,23 +217,31 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMock, 1);
-    }
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockTwo, 1);
-    }
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockThree, 1);
-    }
-    for (let i = 0; i < 10; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(borrowTxMockFour, 1);
-    }
+    const borrowTxMockFive = {
+      block: {
+        number: 4,
+        timestamp: 1,
+      },
+      to: "0x123",
+      from: "0x1234",
+      transaction: {
+        hash: "0xx0",
+      },
+    };
 
-    expect(TimeAnomalyDetectionTemp.GetIsFullBorrowBucket()).toBe(true);
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMock, 4);
+
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMockTwo, 7);
+
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMockThree, 10);
+
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMockFour, 7);
+    TimeAnomalyDetectionTemp.addBorrowTx(borrowTxMockFive, 7);
+
+    expect(TimeAnomalyDetectionTemp.isTrainedBorrows).toBeTruthy();
   });
 
-  it("Should successfully return normal margin for mint tx", () => {
+  it("Should successfully return low and high for mint tx", () => {
     const mintTxMock = {
       block: {
         number: 1,
@@ -251,6 +288,7 @@ describe("Time Anomaly Detection", () => {
     const mintTxMockFive = {
       block: {
         number: 5,
+        timestamp: 1,
       },
       to: "0x123",
       from: "0x1234",
@@ -259,24 +297,19 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
-    }
-    for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo, 1);
-    }
-    for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree, 1);
-    }
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour, 1);
-    }
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMock, 10);
 
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFive);
-    }
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockTwo, 12);
 
-    expect(TimeAnomalyDetectionTemp.GetMarginForMintBucket()).not.toBe(0);
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockThree, 7);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockFour, 5);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockFive, 12);
+
+    expect(TimeAnomalyDetectionTemp.getLowAndHighMints()).toStrictEqual([
+      0.008157572881717812, 12.347856160270762,
+    ]);
   });
 
   it("Should successfully return normal margin for borrow tx", () => {
@@ -326,6 +359,7 @@ describe("Time Anomaly Detection", () => {
     const mintTxMockFive = {
       block: {
         number: 5,
+        timestamp: 1,
       },
       to: "0x123",
       from: "0x1234",
@@ -334,24 +368,19 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMock, 1);
-    }
-    for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockTwo, 1);
-    }
-    for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockThree, 1);
-    }
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFour, 1);
-    }
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMock, 10);
 
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFive, 1);
-    }
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockTwo, 15);
 
-    expect(TimeAnomalyDetectionTemp.GetMarginForBorrowBucket()).not.toBe(0);
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockThree, 17);
+
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockFour, 13);
+
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockFive, 10);
+
+    expect(TimeAnomalyDetectionTemp.getLowAndHighBorrows()).toStrictEqual([
+      8.999769742869303, 9.001195523894124,
+    ]);
   });
 
   it("Should successfully return flag object for mint tx", () => {
@@ -409,25 +438,17 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMock, 1);
-    }
-    for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockTwo, 1);
-    }
-    for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockThree, 1);
-    }
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFour, 1);
-    }
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMock, 1);
 
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddMintTx(mintTxMockFive, 1);
-    }
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockTwo, 1);
 
-    expect(TimeAnomalyDetectionTemp.GetMintsForFlag()).toStrictEqual({
-      baseline: 10.666666666666666,
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockThree, 1);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockFour, 1);
+
+    TimeAnomalyDetectionTemp.addMintTx(mintTxMockFive, 1);
+
+    expect(TimeAnomalyDetectionTemp.getMintsForFlag()).toStrictEqual({
       firstTxHash: "0xx0",
       from_address: "0x0",
       lastTxHash: "0xx0",
@@ -491,25 +512,17 @@ describe("Time Anomaly Detection", () => {
       },
     };
 
-    for (let i = 0; i < 4; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMock, 1);
-    }
-    for (let i = 0; i < 8; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockTwo, 1);
-    }
-    for (let i = 0; i < 9; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockThree, 1);
-    }
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFour, 1);
-    }
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMock, 1);
 
-    for (let i = 0; i < 15; i++) {
-      TimeAnomalyDetectionTemp.AddBorrowTx(mintTxMockFive, 1);
-    }
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockTwo, 1);
 
-    expect(TimeAnomalyDetectionTemp.GetBorrowsForFlag()).toStrictEqual({
-      baseline: 10.666666666666666,
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockThree, 1);
+
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockFour, 1);
+
+    TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockFive, 1);
+
+    expect(TimeAnomalyDetectionTemp.getBorrowsForFlag()).toStrictEqual({
       firstTxHash: "0xx0",
       from_address: "0x0",
       lastTxHash: "0xx0",
