@@ -185,6 +185,7 @@ async function runJob(trackerBuckets) {
             },
           })
         );
+        tracker.reset();
       }
     }
     if (tracker.isTrainedBorrows) {
@@ -207,6 +208,7 @@ async function runJob(trackerBuckets) {
             },
           })
         );
+        tracker.reset();
       }
     }
   }
