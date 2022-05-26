@@ -147,18 +147,12 @@ class TimeAnomalyDetection {
   getLowAndHighMints() {
     const [pred, error] = this.mintBucket.predict(1);
 
-    return [
-      pred[0] - 1.96 * Math.sqrt(error[0]),
-      pred[0] + 1.96 * Math.sqrt(error[0]),
-    ];
+    return [pred[0] + 1.96 * Math.sqrt(error[0]), pred[0]];
   }
 
   getLowAndHighBorrows() {
     const [pred, error] = this.borrowBucket.predict(1);
-    return [
-      pred[0] - 1.96 * Math.sqrt(error[0]),
-      pred[0] + 1.96 * Math.sqrt(error[0]),
-    ];
+    return [pred[0] + 1.96 * Math.sqrt(error[0]), pred[0]];
   }
 
   getCurrentMintedCount() {

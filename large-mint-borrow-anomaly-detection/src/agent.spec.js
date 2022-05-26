@@ -310,7 +310,7 @@ describe("Transaction Volume Anomaly Detection", () => {
             FIRST_TRANSACTION_HASH: "0x00x",
             LAST_TRANSACTION_HASH: "0x00x",
             ASSET_IMPACTED: "0x123",
-            BASELINE_VOLUME: 7,
+            BASELINE_VOLUME: 8,
           },
         }),
       ]);

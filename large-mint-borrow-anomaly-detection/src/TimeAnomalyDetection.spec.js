@@ -308,11 +308,11 @@ describe("Time Anomaly Detection", () => {
     TimeAnomalyDetectionTemp.addMintTx(mintTxMockFive, 12);
 
     expect(TimeAnomalyDetectionTemp.getLowAndHighMints()).toStrictEqual([
-      0.008157572881717812, 12.347856160270762,
+      12.347856160270762, 6.17800686657624,
     ]);
   });
 
-  it("Should successfully return normal margin for borrow tx", () => {
+  it("Should successfully return low and high for borrow tx", () => {
     const mintTxMock = {
       block: {
         number: 1,
@@ -379,7 +379,7 @@ describe("Time Anomaly Detection", () => {
     TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockFive, 10);
 
     expect(TimeAnomalyDetectionTemp.getLowAndHighBorrows()).toStrictEqual([
-      8.999769742869303, 9.001195523894124,
+      9.001195523894124, 9.000482633381713,
     ]);
   });
 

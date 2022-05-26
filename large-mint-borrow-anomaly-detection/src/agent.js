@@ -13,7 +13,7 @@ const {
   getBlocktimeByChainId,
 } = require("./agent.config");
 
-let { bucketBlockSize } = require("./agent.config");
+let { bucketBlockSize, aggregationTimePeriod } = require("./agent.config");
 
 const ARIMA_CONFIG = {
   p: 2,
@@ -32,7 +32,6 @@ const provider = getEthersProvider();
 
 let isRunningJob = false;
 let localFindings = [];
-let aggregationTimePeriod = 1; //The period that is calculated by bucketBlockSize * blockTime
 let blockTime = 0;
 
 const initialize = async () => {
@@ -65,13 +64,7 @@ const createTrackerBucket = (address, trackerBuckets) => {
 };
 
 const alreadyTracked = (address, trackerBuckets) => {
-  const trackerKeys = [];
-  for (let bucket of trackerBuckets) {
-    const addressTracked = bucket.addressTracked;
-    trackerKeys.push(addressTracked);
-  }
-
-  const found = trackerKeys.findIndex((c) => c == address);
+  const found = trackerBuckets.findIndex((c) => c.addressTracked == address);
 
   return found;
 };
@@ -166,7 +159,7 @@ async function runJob(trackerBuckets) {
   for (let tracker of trackerBuckets) {
     if (tracker.isTrainedMints) {
       const count = tracker.getCurrentMintedCount();
-      const [low, high] = tracker.getLowAndHighMints();
+      const [high, pred] = tracker.getLowAndHighMints();
 
       if (count > high) {
         const findingData = tracker.getMintsForFlag();
@@ -181,7 +174,7 @@ async function runJob(trackerBuckets) {
               FIRST_TRANSACTION_HASH: findingData.firstTxHash,
               LAST_TRANSACTION_HASH: findingData.lastTxHash,
               ASSET_IMPACTED: findingData.mintedAssetAccount,
-              BASELINE_VOLUME: Math.floor(low),
+              BASELINE_VOLUME: Math.floor(pred),
             },
           })
         );
@@ -190,7 +183,7 @@ async function runJob(trackerBuckets) {
     }
     if (tracker.isTrainedBorrows) {
       const count = tracker.getCurrentBorrowedCount();
-      const [low, high] = tracker.getLowAndHighBorrows();
+      const [high, pred] = tracker.getLowAndHighBorrows();
       if (count > high) {
         const findingData = tracker.getBorrowsForFlag();
         findings.push(
@@ -204,7 +197,7 @@ async function runJob(trackerBuckets) {
               FIRST_TRANSACTION_HASH: findingData.firstTxHash,
               LAST_TRANSACTION_HASH: findingData.lastTxHash,
               ASSET_IMPACTED: findingData.borrowedAssetAccount,
-              BASELINE_VOLUME: low,
+              BASELINE_VOLUME: Math.floor(pred),
             },
           })
         );

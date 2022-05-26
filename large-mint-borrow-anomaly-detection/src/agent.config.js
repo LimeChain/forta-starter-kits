@@ -9,6 +9,7 @@ module.exports = {
   bucketBlockSize: 5,
   commonEventSigs,
   limitTracked: 10000,
+  aggregationTimePeriod: 1,
   getMinBucketBlockSizeByChainId: (chainId) => {
     switch (chainId) {
       case 1:
