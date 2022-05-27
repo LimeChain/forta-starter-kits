@@ -16,7 +16,7 @@ Detects if the balance of a protocol decreases significantly
 
 ## Alerts
 
-Describe each of the type of alerts fired by this agent
+Describe each of the type of alerts fired by this bot
 
 - BALANCE-DECREASE-ASSETS-ALL-REMOVED
   - Fired when the token balance of a protocol is completely drained
