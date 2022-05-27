@@ -1,72 +1,217 @@
+/* eslint-disable no-await-in-loop */
+/* eslint-disable no-plusplus */
 const {
   FindingType,
   FindingSeverity,
   Finding,
-  createTransactionEvent,
   ethers,
-} = require("forta-agent");
+} = require('forta-agent');
 const {
   handleTransaction,
-  ERC20_TRANSFER_EVENT,
-  TETHER_ADDRESS,
-  TETHER_DECIMALS,
-} = require("./agent");
+  handleBlock,
+  resetState,
+  getContractAssets,
+} = require('./agent');
 
-describe("high tether transfer agent", () => {
-  describe("handleTransaction", () => {
-    const mockTxEvent = createTransactionEvent({});
-    mockTxEvent.filterLog = jest.fn();
+const contractAddress = '0xcontract';
+const asset = '0xasset';
+const txHash = 'hash';
+
+// Mock the config file
+jest.mock('../bot-config.json', () => ({
+  aggregationTimePeriod: 100,
+  address: contractAddress,
+}), { virtual: true });
+
+const mockBalanceOf = jest.fn();
+
+// Mock the balanceOf method
+jest.mock('forta-agent', () => {
+  const original = jest.requireActual('forta-agent');
+  return {
+    ...original,
+    ethers: {
+      ...original.ethers,
+      Contract: jest.fn().mockImplementation(() => ({ balanceOf: mockBalanceOf })), // try wirh mock
+    },
+  };
+});
+
+describe('large balance decrease bot', () => {
+  describe('handleTransaction', () => {
+    const mockTxEvent = {
+      blockNumber: 1000,
+      hash: txHash,
+      filterLog: jest.fn(),
+    };
 
     beforeEach(() => {
+      resetState();
       mockTxEvent.filterLog.mockReset();
+      mockBalanceOf.mockReset();
     });
 
-    it("returns empty findings if there are no Tether transfers", async () => {
-      mockTxEvent.filterLog.mockReturnValue([]);
+    it('should return empty findings if there are no Transfer events', async () => {
+      mockTxEvent.filterLog.mockReturnValueOnce([]);
 
       const findings = await handleTransaction(mockTxEvent);
 
       expect(findings).toStrictEqual([]);
       expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledWith(
-        ERC20_TRANSFER_EVENT,
-        TETHER_ADDRESS
-      );
     });
 
-    it("returns a finding if there is a Tether transfer over 10,000", async () => {
-      const mockTetherTransferEvent = {
-        args: {
-          from: "0xabc",
-          to: "0xdef",
-          value: ethers.BigNumber.from("20000000000"), //20k with 6 decimals
-        },
-      };
-      mockTxEvent.filterLog.mockReturnValue([mockTetherTransferEvent]);
+    it('should return empty findings if there are no Transfer to or from the contract address', async () => {
+      const event = { args: { from: '0xfrom', to: '0xto' } };
+      mockTxEvent.filterLog.mockReturnValueOnce([event]);
 
       const findings = await handleTransaction(mockTxEvent);
 
-      const normalizedValue = mockTetherTransferEvent.args.value.div(
-        10 ** TETHER_DECIMALS
-      );
-      expect(findings).toStrictEqual([
-        Finding.fromObject({
-          name: "High Tether Transfer",
-          description: `High amount of USDT transferred: ${normalizedValue}`,
-          alertId: "FORTA-1",
-          severity: FindingSeverity.Low,
-          type: FindingType.Info,
-          metadata: {
-            to: mockTetherTransferEvent.args.to,
-            from: mockTetherTransferEvent.args.from,
-          },
-        }),
-      ]);
+      expect(findings).toStrictEqual([]);
       expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
-      expect(mockTxEvent.filterLog).toHaveBeenCalledWith(
-        ERC20_TRANSFER_EVENT,
-        TETHER_ADDRESS
-      );
+    });
+
+    it('should set the balance if there is a transfer of new asset', async () => {
+      const event = {
+        address: asset,
+        args: {
+          from: '0xfrom',
+          to: contractAddress,
+          value: ethers.BigNumber.from(50),
+        },
+      };
+      mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(100));
+      mockTxEvent.filterLog.mockReturnValueOnce([event]);
+
+      const findings = await handleTransaction(mockTxEvent);
+
+      expect(findings).toStrictEqual([]);
+      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
+      expect(mockBalanceOf).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return empty findings if the balance is not drained', async () => {
+      const event = {
+        address: asset,
+        args: {
+          from: contractAddress,
+          to: '0xto',
+          value: ethers.BigNumber.from(50),
+        },
+      };
+      mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(100));
+      mockTxEvent.filterLog.mockReturnValueOnce([event]);
+
+      const findings = await handleTransaction(mockTxEvent);
+
+      expect(findings).toStrictEqual([]);
+      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
+      expect(mockBalanceOf).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return findings if the balance is drained', async () => {
+      const event = {
+        address: asset,
+        args: {
+          from: contractAddress,
+          to: '0xto',
+          value: ethers.BigNumber.from(100),
+        },
+      };
+      mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(100));
+      mockTxEvent.filterLog.mockReturnValueOnce([event]);
+
+      const findings = await handleTransaction(mockTxEvent);
+
+      expect(findings).toStrictEqual([Finding.fromObject({
+        name: 'Assets removed',
+        description: `All ${asset} tokens have been removed from ${contractAddress}.`,
+        alertId: 'BALANCE-DECREASE-ASSETS-ALL-REMOVED',
+        severity: FindingSeverity.Critical,
+        type: FindingType.Exploit,
+        metadata: {
+          firstTxHash: txHash,
+          lastTxHash: txHash,
+          assetImpacted: asset,
+        },
+      })]);
+      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
+      expect(mockBalanceOf).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // handle block
+  describe('handleBlock', () => {
+    beforeEach(() => {
+      resetState();
+      mockBalanceOf.mockReset();
+    });
+
+    it('should return empty findings if not enough time has passed', async () => {
+      const mockBlockEvent = { block: { timestamp: 10 } };
+
+      const findings = await handleBlock(mockBlockEvent);
+      expect(findings).toStrictEqual([]);
+    });
+
+    it('should return empty findings if there is not enough data', async () => {
+      getContractAssets()[asset] = {
+        balance: ethers.BigNumber.from(100),
+        timeSeries: [10, 10, 10],
+      };
+
+      const mockBlockEvent = { block: { timestamp: 1000 } };
+      const findings = await handleBlock(mockBlockEvent);
+      expect(findings).toStrictEqual([]);
+
+      // Reset the contractAssets
+      delete getContractAssets()[asset];
+    });
+
+    it('should return finding if there is an anomaly', async () => {
+      // Create transaction that contains a withdraw of 100 tokens
+      const mockTxEvent = {
+        blockNumber: 1000,
+        hash: txHash,
+        filterLog: jest.fn(),
+      };
+      const event = {
+        address: asset,
+        args: {
+          from: contractAddress,
+          to: '0xto',
+          value: ethers.BigNumber.from(100),
+        },
+      };
+
+      // The tx withdraws 100 and the remaining balance is 1000 (10%)
+      mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(1100));
+
+      mockTxEvent.filterLog.mockReturnValueOnce([event]);
+      await handleTransaction(mockTxEvent);
+
+      // Create time series with 11 elements of value 10 and set the bal
+      const timeSeries = Array(11).fill().map(() => 10);
+      getContractAssets()[asset].timeSeries = timeSeries;
+
+      // Handle the block
+      const mockBlockEvent = { block: { timestamp: 1000 } };
+      const findings = await handleBlock(mockBlockEvent);
+      expect(findings).toStrictEqual([Finding.fromObject({
+        name: 'Assets significantly decreased',
+        description: `A significant amount ${asset} tokens have been removed from ${contractAddress}.`,
+        alertId: 'BALANCE-DECREASE-ASSETS-PORTION-REMOVED',
+        severity: FindingSeverity.Medium,
+        type: FindingType.Exploit,
+        metadata: {
+          firstTxHash: txHash,
+          lastTxHash: txHash,
+          assetImpacted: asset,
+          assetVolumeDecreasePercentage: 1000 / 100,
+        },
+      })]);
+
+      // Reset the contractAssets
+      delete getContractAssets()[asset];
     });
   });
 });

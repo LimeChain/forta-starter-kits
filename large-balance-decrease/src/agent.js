@@ -20,7 +20,6 @@ const zero = ethers.constants.Zero;
 const secondsPerYear = 60 * 60 * 24 * 365;
 const periodsPerYear = Math.floor(secondsPerYear / aggregationTimePeriod);
 
-// Find best params
 const arima = new ARIMA({
   p: 1,
   d: 0,
@@ -28,7 +27,7 @@ const arima = new ARIMA({
   verbose: false,
 });
 
-let lastTimestamp = Date.now();
+let lastTimestamp = 0;
 
 // Store the balance and time series for all tokens
 const contractAssets = {};
@@ -38,7 +37,7 @@ const currentPeriodDecreaseAmounts = {};
 const currentPeriodTxs = {};
 
 const handleTransaction = async (txEvent) => {
-  const findings = [];
+  let findings = [];
 
   // Get the events that are from/to the contractAddress
   const events = txEvent
@@ -47,6 +46,8 @@ const handleTransaction = async (txEvent) => {
       const { from, to } = event.args;
       return (contractAddress === from.toLowerCase() || contractAddress === to.toLowerCase());
     });
+
+  if (events.length === 0) return findings;
 
   // First check if there are assets with unknown balance
   await Promise.all(events.map(async (event) => {
@@ -60,9 +61,6 @@ const handleTransaction = async (txEvent) => {
         { blockTag: txEvent.blockNumber - 1 },
       );
 
-      // Mock the prev balance (REMOVE!!!)
-      // const balance = ethers.BigNumber.from('156629158238930877722356');
-
       contractAssets[asset] = {
         balance,
         timeSeries: [],
@@ -72,7 +70,7 @@ const handleTransaction = async (txEvent) => {
     }
   }));
 
-  events.forEach(async (event) => {
+  findings = await Promise.all(events.map(async (event) => {
     const { address: asset } = event;
     const { from, value } = event.args;
 
@@ -85,7 +83,7 @@ const handleTransaction = async (txEvent) => {
 
       // Alert if all tokens are withdrawn
       if (contractAssets[asset].balance.eq(zero)) {
-        findings.push(Finding.fromObject({
+        return Finding.fromObject({
           name: 'Assets removed',
           description: `All ${asset} tokens have been removed from ${contractAddress}.`,
           alertId: 'BALANCE-DECREASE-ASSETS-ALL-REMOVED',
@@ -96,12 +94,16 @@ const handleTransaction = async (txEvent) => {
             lastTxHash: txEvent.hash,
             assetImpacted: asset,
           },
-        }));
+        });
       }
     } else {
       contractAssets[asset].balance = contractAssets[asset].balance.add(value);
     }
-  });
+    return null;
+  }));
+
+  // Filter out null elements
+  findings = findings.filter((f) => !!f);
 
   return findings;
 };
@@ -156,7 +158,15 @@ const handleBlock = async (blockEvent) => {
   return findings;
 };
 
+// Used in the unit tests
+function resetState() {
+  Object.keys(contractAssets).forEach((k) => delete contractAssets[k]);
+  lastTimestamp = 0;
+}
+
 module.exports = {
   handleTransaction,
   handleBlock,
+  resetState,
+  getContractAssets: () => contractAssets, // Used in the unit tests
 };

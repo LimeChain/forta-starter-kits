@@ -1,26 +1,42 @@
-# Large Tether Transfer Agent
+# Large Balance Decrease Bot
 
 ## Description
 
-This agent detects transactions with large Tether transfers
+Detects if the balance of a protocol decreases significantly
 
 ## Supported Chains
 
 - Ethereum
-- List any other chains this agent can support e.g. BSC
+- Optimism
+- Binance Smart Chain
+- Polygon
+- Fantom
+- Arbitrum
+- Avalanche
 
 ## Alerts
 
 Describe each of the type of alerts fired by this agent
 
-- FORTA-1
-  - Fired when a transaction contains a Tether transfer over 10,000 USDT
-  - Severity is always set to "low" (mention any conditions where it could be something else)
-  - Type is always set to "info" (mention any conditions where it could be something else)
-  - Mention any other type of metadata fields included with this alert
+- BALANCE-DECREASE-ASSETS-ALL-REMOVED
+  - Fired when the token balance of a protocol is completely drained
+  - Severity is always set to "critical"
+  - Type is always set to "exploit"
+  - Metadata:
+    - firstTxHash - the hash of the first transaction for the period
+    - lastTxHash - the hash of the last transaction for the period
+    - assetImpacted - the drained asset
+
+- BALANCE-DECREASE-ASSETS-PORTION-REMOVED
+  - Fired when the token balance of a protocol decreases significantly
+  - Severity is always set to "medium"
+  - Type is always set to "exploit"
+  - Metadata:
+    - firstTxHash - the hash of the first transaction for the period
+    - lastTxHash - the hash of the last transaction for the period
+    - assetImpacted - the impacted asset
+    - assetVolumeDecreasePercentage - the decrease percentage
 
 ## Test Data
 
-The agent behaviour can be verified with the following transactions:
-
-- 0x3a0f757030beec55c22cbc545dd8a844cbbb2e6019461769e1bc3f3a95d10826 (15,000 USDT)
+The bot behaviour can be verified with the provided unit tests
