@@ -307,7 +307,7 @@ describe("Time Anomaly Detection", () => {
 
     TimeAnomalyDetectionTemp.addMintTx(mintTxMockFive, 12);
 
-    expect(TimeAnomalyDetectionTemp.getLowAndHighMints()).toStrictEqual([
+    expect(TimeAnomalyDetectionTemp.getHighAndPredMints()).toStrictEqual([
       12.347856160270762, 6.17800686657624,
     ]);
   });
@@ -378,7 +378,7 @@ describe("Time Anomaly Detection", () => {
 
     TimeAnomalyDetectionTemp.addBorrowTx(mintTxMockFive, 10);
 
-    expect(TimeAnomalyDetectionTemp.getLowAndHighBorrows()).toStrictEqual([
+    expect(TimeAnomalyDetectionTemp.getHighAndPredBorrows()).toStrictEqual([
       9.001195523894124, 9.000482633381713,
     ]);
   });

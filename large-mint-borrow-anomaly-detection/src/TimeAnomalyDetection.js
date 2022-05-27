@@ -144,13 +144,13 @@ class TimeAnomalyDetection {
     this.isTrainedBorrows = true;
   }
 
-  getLowAndHighMints() {
+  getHighAndPredMints() {
     const [pred, error] = this.mintBucket.predict(1);
 
     return [pred[0] + 1.96 * Math.sqrt(error[0]), pred[0]];
   }
 
-  getLowAndHighBorrows() {
+  getHighAndPredBorrows() {
     const [pred, error] = this.borrowBucket.predict(1);
     return [pred[0] + 1.96 * Math.sqrt(error[0]), pred[0]];
   }

@@ -65,7 +65,6 @@ const createTrackerBucket = (address, trackerBuckets) => {
 
 const alreadyTracked = (address, trackerBuckets) => {
   const found = trackerBuckets.findIndex((c) => c.addressTracked == address);
-
   return found;
 };
 
@@ -159,7 +158,7 @@ async function runJob(trackerBuckets) {
   for (let tracker of trackerBuckets) {
     if (tracker.isTrainedMints) {
       const count = tracker.getCurrentMintedCount();
-      const [high, pred] = tracker.getLowAndHighMints();
+      const [high, pred] = tracker.getHighAndPredMints();
 
       if (count > high) {
         const findingData = tracker.getMintsForFlag();
@@ -183,7 +182,7 @@ async function runJob(trackerBuckets) {
     }
     if (tracker.isTrainedBorrows) {
       const count = tracker.getCurrentBorrowedCount();
-      const [high, pred] = tracker.getLowAndHighBorrows();
+      const [high, pred] = tracker.getHighAndPredBorrows();
       if (count > high) {
         const findingData = tracker.getBorrowsForFlag();
         findings.push(
