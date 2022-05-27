@@ -37,7 +37,7 @@ const currentPeriodDecreaseAmounts = {};
 const currentPeriodTxs = {};
 
 const handleTransaction = async (txEvent) => {
-  let findings = [];
+  const findings = [];
 
   // Get the events that are from/to the contractAddress
   const events = txEvent
@@ -70,20 +70,21 @@ const handleTransaction = async (txEvent) => {
     }
   }));
 
-  findings = await Promise.all(events.map(async (event) => {
+  events.forEach((event) => {
     const { address: asset } = event;
     const { from, value } = event.args;
 
     const isSender = (contractAddress === from.toLowerCase());
 
     if (isSender) {
+      // Update the balance for the asset and the data for the current period
       currentPeriodTxs[asset].push(txEvent.hash);
       currentPeriodDecreaseAmounts[asset] = currentPeriodDecreaseAmounts[asset].add(value);
       contractAssets[asset].balance = contractAssets[asset].balance.sub(value);
 
       // Alert if all tokens are withdrawn
       if (contractAssets[asset].balance.eq(zero)) {
-        return Finding.fromObject({
+        findings.push(Finding.fromObject({
           name: 'Assets removed',
           description: `All ${asset} tokens have been removed from ${contractAddress}.`,
           alertId: 'BALANCE-DECREASE-ASSETS-ALL-REMOVED',
@@ -94,16 +95,13 @@ const handleTransaction = async (txEvent) => {
             lastTxHash: txEvent.hash,
             assetImpacted: asset,
           },
-        });
+        }));
       }
     } else {
+      // Update the balance for the asset
       contractAssets[asset].balance = contractAssets[asset].balance.add(value);
     }
-    return null;
-  }));
-
-  // Filter out null elements
-  findings = findings.filter((f) => !!f);
+  });
 
   return findings;
 };
@@ -116,6 +114,8 @@ const handleBlock = async (blockEvent) => {
 
   Object.entries(contractAssets).forEach(([asset, data]) => {
     const { timeSeries, balance } = data;
+
+    // Only train if we have enough data
     if (timeSeries.length > 10) {
       arima.train(timeSeries);
       const [pred, err] = arima.predict(1).flat();
@@ -124,6 +124,7 @@ const handleBlock = async (blockEvent) => {
       const threshold = pred + 1.96 * Math.sqrt(err);
 
       if (currentPeriodDecreaseAmounts[asset] > threshold) {
+        // Calculate the percentage
         const decreaseAmount = ethers.utils.formatEther(currentPeriodDecreaseAmounts[asset]);
         const balanceAmount = ethers.utils.formatEther(balance);
         const percentage = (decreaseAmount / balanceAmount) * 100;
