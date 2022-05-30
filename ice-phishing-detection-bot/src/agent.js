@@ -34,7 +34,7 @@ const provideHandleTransaction = (addressesTracked) => {
       const targetAssetAddress = tx.address;
       const { name } = tx;
       const { spender } = tx.args;
-      const { from } = tx.args;
+      const { from, to } = tx.args;
       const hash = txEvent.hash;
       const targetAddress = spender ? spender : from;
 
@@ -56,7 +56,7 @@ const provideHandleTransaction = (addressesTracked) => {
           );
         }
       } else if (name == "Transfer") {
-        if (!DEX_AND_CEX_ADDRESSES.includes(spender)) {
+        if (!DEX_AND_CEX_ADDRESSES.includes(to)) {
           addressesTracked[targetAddress].addToTransfers(
             targetAssetAddress,
             from,
