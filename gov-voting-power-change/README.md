@@ -1,26 +1,44 @@
-# Large Tether Transfer Agent
+# Governance Voting Power Change
 
 ## Description
 
-This agent detects transactions with large Tether transfers
+This bot detects changes in voting power for a specific address for a specific Governance protocol
 
 ## Supported Chains
 
 - Ethereum
-- List any other chains this agent can support e.g. BSC
+- Polygon
+- Fantom
+- Optimism
+- Avalanche
+- Binance Smart Chain
+- Arbitrum
 
 ## Alerts
 
-Describe each of the type of alerts fired by this agent
+- SIGNIFICANT-VOTING-POWER-ACCUMULATION
 
-- FORTA-1
-  - Fired when a transaction contains a Tether transfer over 10,000 USDT
-  - Severity is always set to "low" (mention any conditions where it could be something else)
-  - Type is always set to "info" (mention any conditions where it could be something else)
-  - Mention any other type of metadata fields included with this alert
+  - Fired when an address recieves a significant increase in voting power for a protocol
+  - Severity is always set to "low"
+  - Type is always set to "suspicious"
+
+- SIGNIFICANT-VOTING-POWER-ACCUMULATION-VOTED
+
+  - Fired when an address recieves a significant increase in voting power for a protocol and has voted on the protocol
+  - Severity is always set to "medium"
+  - Type is always set to "suspicious"
+
+- SIGNIFICANT-VOTING-POWER-ACCUMULATION-DISTRIBUTION
+
+  - Fired when an address recieves a significant increase in voting power for a protocol and then distributing it to other people
+  - Severity is always set to "medium"
+  - Type is always set to "suspicious"
+
+- SIGNIFICANT-VOTING-POWER-ACCUMULATION-DISTRIBUTION-VOTED
+  - Fired when an address recieves a significant increase in voting power for a protocol and then distributing it to other people and then has voted
+  - Severity is always set to "medium"
+  - Type is always set to "suspicious"
 
 ## Test Data
 
-The agent behaviour can be verified with the following transactions:
-
-- 0x3a0f757030beec55c22cbc545dd8a844cbbb2e6019461769e1bc3f3a95d10826 (15,000 USDT)
+The bot behaviour can be verified with the specified unit tests:
