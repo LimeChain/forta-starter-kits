@@ -159,15 +159,9 @@ const handleBlock = async (blockEvent) => {
   return findings;
 };
 
-// Used in the unit tests
-function resetState() {
-  Object.keys(contractAssets).forEach((k) => delete contractAssets[k]);
-  lastTimestamp = 0;
-}
-
 module.exports = {
   handleTransaction,
   handleBlock,
-  resetState,
   getContractAssets: () => contractAssets, // Used in the unit tests
+  resetLastTimestamp: () => { lastTimestamp = 0; }, // Used in the unit tests
 };

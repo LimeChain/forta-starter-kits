@@ -9,8 +9,8 @@ const {
 const {
   handleTransaction,
   handleBlock,
-  resetState,
   getContractAssets,
+  resetLastTimestamp,
 } = require('./agent');
 
 const contractAddress = '0xcontract';
@@ -32,10 +32,16 @@ jest.mock('forta-agent', () => {
     ...original,
     ethers: {
       ...original.ethers,
-      Contract: jest.fn().mockImplementation(() => ({ balanceOf: mockBalanceOf })), // try wirh mock
+      Contract: jest.fn().mockImplementation(() => ({ balanceOf: mockBalanceOf })),
     },
   };
 });
+
+function resetState() {
+  const contractAssets = getContractAssets();
+  Object.keys(contractAssets).forEach((k) => delete contractAssets[k]);
+  resetLastTimestamp();
+}
 
 describe('large balance decrease bot', () => {
   describe('handleTransaction', () => {
