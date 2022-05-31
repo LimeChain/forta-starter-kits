@@ -32,6 +32,15 @@ const mockEulerRepayEvent = {
   },
 };
 
+const mockEulerRequestBorrowEvent = {
+  name: 'RequestBorrow',
+  address: market,
+  args: {
+    amount,
+    account,
+  },
+};
+
 // Event information is not important if we mock 'filterLog'
 const mockMakerEvent = {
   args: { token: asset, amount, receiver: account },
@@ -56,7 +65,8 @@ describe('FlashloanDetector library', () => {
     it('should return the all protocols if there is a flashloan from all', async () => {
       mockTxEvent.filterLog.mockReturnValueOnce([mockAaveEvent]);
       mockTxEvent.filterLog.mockReturnValueOnce([]); // Cannot test because of the RPC call
-      mockTxEvent.filterLog.mockReturnValueOnce([mockEulerBorrowEvent, mockEulerRepayEvent]);
+      mockTxEvent.filterLog.mockReturnValueOnce([
+        mockEulerRequestBorrowEvent, mockEulerBorrowEvent, mockEulerRepayEvent]);
       mockTxEvent.filterLog.mockReturnValueOnce([]); // Cannot test because of the RPC call
       mockTxEvent.filterLog.mockReturnValueOnce([mockMakerEvent]);
       const flashloans = await getFlashloans(mockTxEvent);

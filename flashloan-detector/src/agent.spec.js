@@ -26,6 +26,7 @@ const flashloan = {
 const mockGetFlashloans = jest.fn();
 const mockHelper = {
   zero: ethers.constants.Zero,
+  getTransactionReceipt: jest.fn(),
   init: () => chain,
   calculateBorrowedAmount: jest.fn(),
   calculateTokenProfits: jest.fn(),
@@ -44,6 +45,7 @@ describe('flashloan detector agent', () => {
       from: initiator,
       traces: [],
       filterLog: jest.fn(),
+      transaction: { gasPrice: 0 },
     };
 
     beforeAll(async () => {
@@ -65,6 +67,7 @@ describe('flashloan detector agent', () => {
       mockHelper.calculateBorrowedAmount.mockResolvedValueOnce(10000);
       mockHelper.calculateTokenProfits.mockReturnValueOnce({ [asset]: tokenProfit });
       mockHelper.calculateNativeProfit.mockReturnValueOnce(nativeProfit);
+      mockHelper.getTransactionReceipt.mockResolvedValueOnce({ gasUsed: 0 });
       mockHelper.calculateTokensUsdProfit.mockResolvedValueOnce(tokenUsdProfit);
       mockHelper.calculateNativeUsdProfit.mockResolvedValueOnce(nativeUsdProfit);
       const findings = await handleTransaction(mockTxEvent);
@@ -77,6 +80,7 @@ describe('flashloan detector agent', () => {
           severity: FindingSeverity.High,
           type: FindingType.Exploit,
           metadata: {
+            profit: tokenUsdProfit + nativeUsdProfit,
             tokens: [asset],
           },
         }),

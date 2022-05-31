@@ -2,6 +2,7 @@ const {
   Finding,
   FindingSeverity,
   FindingType,
+  ethers,
 } = require('forta-agent');
 const { getFlashloans: getFlashloansFn } = require('./flashloan-detector');
 const helperModule = require('./helper');
@@ -15,7 +16,10 @@ function provideInitialize(helper) {
   };
 }
 
-const transferEventSig = 'event Transfer(address indexed src, address indexed dst, uint wad)';
+const transferEventSigs = [
+  'event Transfer(address indexed src, address indexed dst, uint wad)',
+  'event Withdrawal(address indexed src, uint256 wad)',
+];
 
 function provideHandleTransaction(helper, getFlashloans) {
   return async function handleTransaction(txEvent) {
@@ -25,7 +29,7 @@ function provideHandleTransaction(helper, getFlashloans) {
     const flashloans = await getFlashloans(txEvent);
     if (flashloans.length === 0) return findings;
 
-    const transferEvents = txEvent.filterLog(transferEventSig);
+    const transferEvents = txEvent.filterLog(transferEventSigs);
     const { traces } = txEvent;
 
     // For each flashloan calculate the token profits and the borrowed amount
@@ -48,6 +52,12 @@ function provideHandleTransaction(helper, getFlashloans) {
     const totalTokenProfits = helper.calculateTokenProfits(transferEvents, initiator);
     let totalNativeProfit = helper.calculateNativeProfit(traces, initiator);
     let totalBorrowed = 0;
+
+    // Subtract the tx fee
+    const { gasUsed } = await helper.getTransactionReceipt(txEvent.hash);
+    const { gasPrice } = txEvent.transaction;
+    const txFee = ethers.BigNumber.from(gasUsed).mul(ethers.BigNumber.from(gasPrice));
+    totalNativeProfit = totalNativeProfit.sub(txFee);
 
     flashloansData.forEach((flashloan) => {
       const { tokenProfits, nativeProfit, borrowedAmountUsd } = flashloan;
@@ -85,6 +95,7 @@ function provideHandleTransaction(helper, getFlashloans) {
         severity: FindingSeverity.High,
         type: FindingType.Exploit,
         metadata: {
+          profit: totalProfit,
           tokens: tokensArray,
         },
       }));
