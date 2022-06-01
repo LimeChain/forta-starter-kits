@@ -97,8 +97,8 @@ const provideHandleTransaction = (addressesTracked, validContract) => {
       }
 
       if (name == "Approval") {
-        if (!valid_contracts.has(spender) || !invalid_addresses.has(spender)) {
-          validContract(spender);
+        if (!valid_contracts.has(spender) && !invalid_addresses.has(spender)) {
+          await validContract(spender);
         }
         if (!valid_contracts.has(spender)) {
           addressesTracked[targetAddress].addToApprovals(
@@ -108,8 +108,8 @@ const provideHandleTransaction = (addressesTracked, validContract) => {
           );
         }
       } else if (name == "Transfer") {
-        if (!valid_contracts.has(to) || !invalid_addresses.has(to)) {
-          validContract(to);
+        if (!valid_contracts.has(to) && !invalid_addresses.has(to)) {
+          await validContract(to);
         }
         if (!valid_contracts.has(to)) {
           addressesTracked[targetAddress].addToTransfers(
@@ -149,7 +149,7 @@ const addressQueueRuntimeJob = (validContract) => {
   address_queue = new Set();
 
   for (let address of addresses) {
-    const isFull = validContract(address);
+    const isFull = await validContract(address);
     if (isFull) {
       isRunningAddressQueue = false;
       break;
