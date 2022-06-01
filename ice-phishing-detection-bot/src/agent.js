@@ -31,7 +31,7 @@ let apiCalls = 0;
 
 const validContract = async (contractAddress) => {
   if (contractAddress == ethers.constants.AddressZero) {
-    return null;
+    return true;
   }
   const contractCode = await provider.getCode(contractAddress);
   if (apiCalls >= 5) {
@@ -39,7 +39,7 @@ const validContract = async (contractAddress) => {
     setTimeout(() => {
       apiCalls = 0;
     }, 1000);
-    return null;
+    return true;
   } else if (contractCode != "0x") {
     const result = await axios.get(
       apiURI + `${contractAddress}&apikey=${apiKey}`
@@ -63,6 +63,7 @@ const validContract = async (contractAddress) => {
     invalid_addresses_asArr.shift();
     invalid_addresses = new Set(invalid_addresses_asArr);
   }
+  return false;
 };
 
 const initialize = async () => {
@@ -143,7 +144,7 @@ const provideHandleBlock = (addressesTracked, validContract) => {
   };
 };
 
-const addressQueueRuntimeJob = (validContract) => {
+const addressQueueRuntimeJob = async (validContract) => {
   isRunningAddressQueue = true;
   const addresses = [...address_queue];
   address_queue = new Set();
