@@ -31,7 +31,7 @@ let apiCalls = 0;
 
 const validContract = async (contractAddress) => {
   if (contractAddress == ethers.constants.AddressZero) {
-    return true;
+    return null;
   }
   const contractCode = await provider.getCode(contractAddress);
   if (apiCalls >= 5) {
