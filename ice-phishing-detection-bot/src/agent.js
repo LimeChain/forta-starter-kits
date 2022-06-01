@@ -28,6 +28,7 @@ let provider;
 let apiKey = "";
 let apiURI = "";
 let apiCalls = 0;
+let apiLimitReached = false;
 
 const validContract = async (contractAddress) => {
   if (contractAddress == ethers.constants.AddressZero) {
@@ -36,9 +37,15 @@ const validContract = async (contractAddress) => {
   const contractCode = await provider.getCode(contractAddress);
   if (apiCalls >= 5) {
     address_queue.add(contractAddress);
-    setTimeout(() => {
-      apiCalls = 0;
-    }, 1000);
+    if (apiLimitReached) {
+      return true;
+    } else {
+      setTimeout(() => {
+        apiCalls = 0;
+        apiLimitReached = false;
+      }, 1000);
+      apiLimitReached = true;
+    }
     return true;
   } else if (contractCode != "0x") {
     const result = await axios.get(
@@ -101,7 +108,7 @@ const provideHandleTransaction = (addressesTracked, validContract) => {
         if (!valid_contracts.has(spender) && !invalid_addresses.has(spender)) {
           await validContract(spender);
         }
-        if (!valid_contracts.has(spender)) {
+        if (!valid_contracts.has(spender) && !address_queue.has(spender)) {
           addressesTracked[targetAddress].addToApprovals(
             targetAssetAddress,
             spender,
@@ -112,7 +119,7 @@ const provideHandleTransaction = (addressesTracked, validContract) => {
         if (!valid_contracts.has(to) && !invalid_addresses.has(to)) {
           await validContract(to);
         }
-        if (!valid_contracts.has(to)) {
+        if (!valid_contracts.has(to) && !address_queue.has(to)) {
           addressesTracked[targetAddress].addToTransfers(
             targetAssetAddress,
             from,
