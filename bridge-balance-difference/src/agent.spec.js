@@ -104,7 +104,7 @@ describe('bridge balance difference bot', () => {
       // Add 11 entries with balance diff = 10
       tokenData.timeSeries = Array(11).fill().map(() => 10);
 
-      // The current diff is 100 - 100 = 0 so it is significant
+      // The current diff is 100 - 100 = 0 so it is not significant
       tokenData.tokenContract1.balanceOf.mockResolvedValueOnce(oneHundred);
       tokenData.tokenContract2.balanceOf.mockResolvedValueOnce(oneHundred);
 
