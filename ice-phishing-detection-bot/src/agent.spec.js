@@ -20,14 +20,19 @@ describe("Ice phishing detection bot", () => {
   describe("handleTransaction", () => {
     const mockTxEvent = createTransactionEvent({});
     mockTxEvent.filterLog = jest.fn();
+    const mockValidContract = jest.fn();
     let mockAddressesTracked = [];
     let handleTransaction;
     let handleBlock;
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();
+      mockValidContract.mockReset();
       mockAddressesTracked = [];
-      handleTransaction = provideHandleTransaction(mockAddressesTracked);
-      handleBlock = provideHandleBlock(mockAddressesTracked);
+      handleTransaction = provideHandleTransaction(
+        mockAddressesTracked,
+        mockValidContract
+      );
+      handleBlock = provideHandleBlock(mockAddressesTracked, mockValidContract);
     });
 
     it("should successfully add approval to Address Approval tracker for address", async () => {

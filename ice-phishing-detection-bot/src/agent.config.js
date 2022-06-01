@@ -1,58 +1,50 @@
-const DEX_AND_CEX_ADRESSES_ETH = [
-  "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
-  "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F",
-  "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-  "0x58A3c68e2D3aAf316239c003779F71aCb870Ee47",
-];
-
-const DEX_AND_CEX_ADDRESSES_POLY = [
-  "0xF6fa9Ea1f64f1BBfA8d71f7f43fAF6D45520bfac",
-  "0x9f197f9ff460355A40B3c9A10f7d1Ca65f365b83",
-  "0x94930a328162957FF1dd48900aF67B5439336cBD",
-  "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
-  "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-];
-
-const DEX_AND_CEX_ADDRESSES_BSC = [
-  "0x10ED43C718714eb63d5aA57B78B54704E256024E",
-  "0x3a6d8cA21D1CF76F653A67577FA0D27453350dD8",
-  "0x7DAe51BD3E3376B8c7c4900E9107f12Be3AF1bA8",
-  "0x05fF2B0DB69458A0750badebc4f9e13aDd608C7F",
-  "0x11111112542D85B3EF69AE05771c2dCCff4fAa26",
-];
-
-const DEX_AND_CEX_ADDRESSES_ARBITRUM = [
-  "0xC931f61B1534EB21D8c11B24f3f5Ab2471d4aB50",
-  "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
-  "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-  "0x226cb17a52709034e2EC6Abe0D2f0A9eBCEC1059",
-];
-
-const DEX_AND_CEX_ADDRESSES_OPTIMISM = [
-  "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-  "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
-  "0x7Af14ADc8Aea70f063c7eA3B2C1AD0D7A59C4bFf",
-];
-
 module.exports = {
-  getDexAndCexAddresses: (chainId) => {
+  getAPI: (chainId) => {
     switch (chainId) {
       case 1:
-        return DEX_AND_CEX_ADRESSES_ETH;
+        return {
+          APIKey: "API_KEY_HERE",
+          API_URI:
+            "https://api.etherscan.io/api?module=contract&action=getabi&address=",
+        };
         break;
       case 137:
-        return DEX_AND_CEX_ADDRESSES_POLY;
+        return {
+          APIKey: "API_KEY_HERE",
+          API_URI:
+            "https://api.polygonscan.com/api?module=contract&action=getabi&address=",
+        };
         break;
       case 56:
-        return DEX_AND_CEX_ADDRESSES_BSC;
+        return {
+          APIKey: "API_KEY_HERE",
+          API_URI:
+            "https://api.bscscan.com/api?module=contract&action=getabi&address=",
+        };
         break;
       case 10:
-        return DEX_AND_CEX_ADDRESSES_OPTIMISM;
+        return {
+          APIKey: "API_KEY_HERE",
+          API_URI:
+            "https://api-optimistic.etherscan.io/api?module=contract&action=getabi&address=",
+        };
       case 42161:
-        return DEX_AND_CEX_ADDRESSES_ARBITRUM;
+        return {
+          APIKey: "API_KEY_HERE",
+          API_URI:
+            "https://api.arbiscan.io/api?module=contract&action=getabi&address=",
+        };
+        break;
+      case 250:
+        return {
+          APIKey: "API_KEY_HERE",
+          API_URI:
+            "https://api.ftmscan.com/api?module=contract&action=getabi&address=",
+        };
         break;
     }
   },
   ApprovalThreshold: 20,
   ApprovalTimePeriod: 5 * 24 * 60 * 60, //Approval threshold in days in this case 5 in seconds
+  maxTracked: 50_000,
 };
