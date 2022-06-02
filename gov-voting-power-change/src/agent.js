@@ -11,12 +11,12 @@ const {
   accumulationMonitoringPeriod,
   distributionMonitoringPeriod,
   eventSigs,
-  contractAbi,
-  protocolAddress,
   tokenDefaultABI,
   maxTracked,
 } = require("./agent.config");
 
+const { protocolName, bots } = require("../bot-config.json");
+const { Contract, Provider } = require("ethers-multicall");
 const addressTracker = {};
 
 let provider;
@@ -29,15 +29,31 @@ let startTimestamp = 0;
 let distributionTracking = false;
 let isRunningJob = false;
 let localFindings = [];
-const updateAddress = (from, to, valueNormalized, addressTracker) => {
+let protocolAddress;
+let contractAbi;
+let addressQueue = new Set();
+let ethcallProvider;
+
+const updateAddress = (
+  from,
+  to,
+  valueNormalized,
+  addressTracker,
+  tokenContract
+) => {
   const objectKeys = Object.keys(addressTracker);
   if (objectKeys.length > maxTracked) {
     delete addressTracker[objectKeys[0]];
   }
   if (!addressTracker[from]) {
+    const balanceOf = tokenContract.balanceOf(from);
+
+    const valueNormalized = Number(
+      ethers.utils.formatUnits(balanceOf, tokenDecimals)
+    );
     addressTracker[from] = {
-      initialBalance: 0,
-      newBalance: valueNormalized * -1,
+      initialBalance: valueNormalized,
+      newBalance: valueNormalized,
       powerGainInPercentage: (valueNormalized / totalInCirculation) * 100,
       recentTransfer: false,
       hasVoted: false,
@@ -57,6 +73,10 @@ const updateAddress = (from, to, valueNormalized, addressTracker) => {
     addressTracker[from] = addressTracked;
   }
   if (!addressTracker[to]) {
+    const balanceOf = tokenContract.balanceOf(to);
+    const valueNormalized = Number(
+      ethers.utils.formatUnits(balanceOf, tokenDecimals)
+    );
     addressTracker[to] = {
       initialBalance: valueNormalized,
       newBalance: valueNormalized,
@@ -81,9 +101,44 @@ const updateAddress = (from, to, valueNormalized, addressTracker) => {
   }
 };
 
+const processAddressQueue = async () => {
+  ethcallProvider = new Provider(provider);
+  await ethcallProvider.init();
+
+  const addressQueueAsArr = [...addressQueue];
+  const balanceOfCalls = [];
+  tokenContract = new Contract(tokenAddress, tokenDefaultABI);
+  for (let address of addressQueueAsArr) {
+    balanceOfCalls.push(tokenContract.balanceOf(address));
+  }
+
+  const balanceOfAll = await ethcallProvider.all(balanceOfCalls);
+
+  for (let [index, address] of addressQueueAsArr.entries()) {
+    const valueNormalized = ethers.utils.formatUnits(
+      balanceOfAll[index],
+      tokenDecimals
+    );
+    addressTracker[address] = {
+      initialBalance: valueNormalized,
+      newBalance: valueNormalized,
+      powerGainInPercentage: (valueNormalized / totalInCirculation) * 100,
+      recentTransfer: false,
+      hasVoted: false,
+      tokensAccumulated: 0,
+    };
+  }
+
+  tokenContract = new ethers.Contract(tokenAddress, tokenDefaultABI, provider);
+};
+
 //Load all addresses from the last 10k blocks for specific token
 const provideInitialize = (addressTracker) => {
   return async () => {
+    const contracts = Object.entries(bots[0].contracts);
+    protocolAddress = contracts[0][1].address;
+    contractAbi = require(`./abi/${contracts[0][1].abiFile}`);
+
     provider = await getEthersProvider();
     protocolContract = new ethers.Contract(
       protocolAddress,
@@ -112,16 +167,15 @@ const provideInitialize = (addressTracker) => {
     const tokenIFace = new ethers.utils.Interface(tokenDefaultABI);
     for (let event of eventLogsFromLast10KBlocks) {
       const res = tokenIFace.parseLog(event);
-      const { from, to, value } = res.args;
-      const valueNormalized = Number(
-        ethers.utils.formatUnits(value, tokenDecimals)
-      );
-      updateAddress(from, to, valueNormalized, addressTracker);
+      const { from, to } = res.args;
+      addressQueue.add(from);
+      addressQueue.add(to);
     }
+    await processAddressQueue();
   };
 };
 
-const provideHandleTransaction = (addressTracker) => {
+const provideHandleTransaction = (addressTracker, tokenContract) => {
   return async (txEvent) => {
     const findings = [];
 
@@ -132,7 +186,7 @@ const provideHandleTransaction = (addressTracker) => {
       const valueNormalized = Number(
         ethers.utils.formatUnits(value, tokenDecimals)
       );
-      updateAddress(from, to, valueNormalized, addressTracker);
+      updateAddress(from, to, valueNormalized, addressTracker, tokenContract);
     }
 
     const voteEvents = txEvent.filterLog(eventSigs, protocolAddress);
@@ -193,6 +247,7 @@ const runJob = (blockEvent, addressTracker) => {
             name: "Significant accumulation of voting power",
             description: `${key} accumulating ${addressTracked.powerGainInPercentage}% of voting power `,
             alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION",
+            protocol: protocolName,
             severity: FindingSeverity.Low,
             type: FindingType.Suspicious,
             metadata: {},
@@ -209,6 +264,7 @@ const runJob = (blockEvent, addressTracker) => {
             name: "Significant accumulation of voting power voted",
             description: `${key} accumulating ${addressTracked.powerGainInPercentage}% of voting power and voted on proposal ${addressTracked.proposalID} `,
             alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION-VOTE",
+            protocol: protocolName,
             severity: FindingSeverity.Medium,
             type: FindingType.Suspicious,
             metadata: {},
@@ -239,6 +295,7 @@ const runJob = (blockEvent, addressTracker) => {
                   100 - tokensDistributedPercentage
                 }% of voting power possibly indicating a govt attack  `,
                 alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION-DISTRIBUTION",
+                protocol: protocolName,
                 severity: FindingSeverity.Medium,
                 type: FindingType.Suspicious,
                 metadata: {},
@@ -264,6 +321,7 @@ const runJob = (blockEvent, addressTracker) => {
                 } possibly indicating a govt attack  `,
                 alertId:
                   "SIGNIFICANT-VOTING-POWER-ACCUMULATION-DISTRIBUTION-VOTE",
+                protocol: protocolName,
                 severity: FindingSeverity.Medium,
                 type: FindingType.Suspicious,
                 metadata: {},
@@ -281,7 +339,7 @@ const runJob = (blockEvent, addressTracker) => {
 
 module.exports = {
   initialize: provideInitialize(addressTracker),
-  handleTransaction: provideHandleTransaction(addressTracker),
+  handleTransaction: provideHandleTransaction(addressTracker, tokenContract),
   handleBlock: provideHandleBlock(addressTracker),
   provideHandleTransaction,
   provideHandleBlock,

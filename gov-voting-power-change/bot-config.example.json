@@ -1,0 +1,18 @@
+{
+  "developerAbbreviation": "",
+  "protocolName": "",
+  "protocolAbbreviation": "",
+  "gatherMode": "any",
+  "bots": [
+    {
+      "botType": "governance",
+      "name": "",
+      "contracts": {
+        "lido": {
+          "address": "",
+          "abiFile": "protocol.json"
+        }
+      }
+    }
+  ]
+}

@@ -1,9 +1,14 @@
 {
   "name": "gov-voting-power-change",
   "version": "0.0.1",
-  "description": "Forta Agent Javascript starter project",
+  "description": "This bot detects changes in voting power for a specific address for a specific Governance protocol",
   "chainIds": [
-    1
+    1,
+    137,
+    10,
+    250,
+    56,
+    42116
   ],
   "scripts": {
     "start": "npm run start:dev",
@@ -22,6 +27,7 @@
   },
   "dependencies": {
     "@types/jest": "^27.5.1",
+    "ethers-multicall": "^0.2.3",
     "forta-agent": "^0.1.6"
   },
   "devDependencies": {

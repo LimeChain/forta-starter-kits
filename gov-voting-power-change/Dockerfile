@@ -1,4 +1,4 @@
-FROM node:12-alpine
+FROM node:16-alpine
 ENV NODE_ENV=production
 # Uncomment the following line to enable agent logging
 # LABEL "network.forta.settings.agent-logs.enable"="true"

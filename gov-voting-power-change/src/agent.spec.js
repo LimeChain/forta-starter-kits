@@ -19,13 +19,19 @@ describe("Governance Voting Power Change", () => {
     const mockTxEvent = createTransactionEvent({});
     const mockBlockEvent = createBlockEvent({});
     mockTxEvent.filterLog = jest.fn();
+    const mockTokenContract = {
+      balanceOf: jest.fn(),
+    };
     let handleTransaction;
     let handleBlock;
     let mockAddressTracker;
     beforeEach(() => {
       mockAddressTracker = {};
       mockTxEvent.filterLog = jest.fn().mockReturnValue([]);
-      handleTransaction = provideHandleTransaction(mockAddressTracker);
+      handleTransaction = provideHandleTransaction(
+        mockAddressTracker,
+        mockTokenContract
+      );
       handleBlock = provideHandleBlock(mockAddressTracker);
       resetDistributionTracker();
       resetIsRunningJob();
@@ -41,11 +47,13 @@ describe("Governance Voting Power Change", () => {
         },
       };
       mockTxEvent.filterLog.mockReturnValueOnce([mockFilterResult]);
-
+      mockTokenContract.balanceOf.mockReturnValue(ethers.BigNumber.from(1000));
       await handleTransaction(mockTxEvent);
-      expect(mockAddressTracker[mockFilterResult.args.to].newBalance).toBe(1);
+      expect(mockAddressTracker[mockFilterResult.args.to].newBalance).toBe(
+        1000
+      );
       expect(mockAddressTracker[mockFilterResult.args.from].newBalance).toBe(
-        -1
+        1000
       );
     });
 
@@ -68,6 +76,7 @@ describe("Governance Voting Power Change", () => {
         mockFilterResult,
         mockFilterResultTwo,
       ]);
+      mockTokenContract.balanceOf.mockReturnValue(ethers.BigNumber.from("1"));
       await handleTransaction(mockTxEvent);
       expect(
         mockAddressTracker[mockFilterResult.args.to].tokensAccumulated
@@ -127,6 +136,7 @@ describe("Governance Voting Power Change", () => {
           name: "Significant accumulation of voting power",
           description: `0x1 accumulating 50% of voting power `,
           alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION",
+          protocol: "lido",
           severity: FindingSeverity.Low,
           type: FindingType.Suspicious,
           metadata: {},
@@ -172,6 +182,7 @@ describe("Governance Voting Power Change", () => {
           name: "Significant accumulation of voting power voted",
           description: `${randomAddress} accumulating 50% of voting power and voted on proposal 5 `,
           alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION-VOTE",
+          protocol: "lido",
           severity: FindingSeverity.Medium,
           type: FindingType.Suspicious,
           metadata: {},
@@ -221,6 +232,7 @@ describe("Governance Voting Power Change", () => {
           name: "Significant accumulation/distribution of voting power",
           description: `${randomAddress} accumulated and then distributed 80% of voting power possibly indicating a govt attack  `,
           alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION-DISTRIBUTION",
+          protocol: "lido",
           severity: FindingSeverity.Medium,
           type: FindingType.Suspicious,
           metadata: {},
@@ -278,6 +290,7 @@ describe("Governance Voting Power Change", () => {
           name: "Significant accumulation/distribution of voting power voted",
           description: `${randomAddress} accumulated and then distributed 80% of voting power and voted on proposal 5 possibly indicating a govt attack  `,
           alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION-DISTRIBUTION-VOTE",
+          protocol: "lido",
           severity: FindingSeverity.Medium,
           type: FindingType.Suspicious,
           metadata: {},
