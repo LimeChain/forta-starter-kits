@@ -34,7 +34,7 @@ let contractAbi;
 let addressQueue = new Set();
 let ethcallProvider;
 
-const updateAddress = (
+const updateAddress = async (
   from,
   to,
   valueNormalized,
@@ -46,7 +46,7 @@ const updateAddress = (
     delete addressTracker[objectKeys[0]];
   }
   if (!addressTracker[from]) {
-    const balanceOf = tokenContract.balanceOf(from);
+    const balanceOf = await tokenContract.balanceOf(from);
 
     const valueNormalized = Number(
       ethers.utils.formatUnits(balanceOf, tokenDecimals)
@@ -73,7 +73,7 @@ const updateAddress = (
     addressTracker[from] = addressTracked;
   }
   if (!addressTracker[to]) {
-    const balanceOf = tokenContract.balanceOf(to);
+    const balanceOf = await tokenContract.balanceOf(to);
     const valueNormalized = Number(
       ethers.utils.formatUnits(balanceOf, tokenDecimals)
     );
@@ -186,7 +186,13 @@ const provideHandleTransaction = (addressTracker, tokenContract) => {
       const valueNormalized = Number(
         ethers.utils.formatUnits(value, tokenDecimals)
       );
-      updateAddress(from, to, valueNormalized, addressTracker, tokenContract);
+      await updateAddress(
+        from,
+        to,
+        valueNormalized,
+        addressTracker,
+        tokenContract
+      );
     }
 
     const voteEvents = txEvent.filterLog(eventSigs, protocolAddress);
