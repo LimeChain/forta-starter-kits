@@ -1,4 +1,4 @@
-const API_KEYS = require("../.keys.config");
+const API_KEYS = require("./.keys.config");
 module.exports = {
   getAPI: (chainId) => {
     switch (chainId) {
