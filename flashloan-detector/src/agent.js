@@ -9,6 +9,7 @@ const helperModule = require('./helper');
 
 let chain;
 const PERCENTAGE_THRESHOLD = 2;
+const PROFIT_THRESHOLD = 100_000;
 
 function provideInitialize(helper) {
   return async function initialize() {
@@ -86,16 +87,29 @@ function provideHandleTransaction(helper, getFlashloans) {
     }
 
     const totalProfit = tokensUsdProfit + nativeUsdProfit;
+    const percentage = (totalProfit / totalBorrowed) * 100;
 
-    if ((totalProfit / totalBorrowed) * 100 > PERCENTAGE_THRESHOLD) {
+    if (percentage > PERCENTAGE_THRESHOLD && totalProfit > PROFIT_THRESHOLD) {
+      findings.push(Finding.fromObject({
+        name: 'Flashloan detected',
+        description: `${initiator} launched flash loan attack and made profit > $${PROFIT_THRESHOLD}`,
+        alertId: 'FLASHLOAN-ATTACK-WITH-HIGH-PROFIT',
+        severity: FindingSeverity.High,
+        type: FindingType.Exploit,
+        metadata: {
+          profit: totalProfit.toFixed(2),
+          tokens: tokensArray,
+        },
+      }));
+    } else if (percentage > PERCENTAGE_THRESHOLD) {
       findings.push(Finding.fromObject({
         name: 'Flashloan detected',
         description: `${initiator} launched flash loan attack`,
         alertId: 'FLASHLOAN-ATTACK',
-        severity: FindingSeverity.High,
+        severity: FindingSeverity.Low,
         type: FindingType.Exploit,
         metadata: {
-          profit: totalProfit,
+          profit: totalProfit.toFixed(2),
           tokens: tokensArray,
         },
       }));

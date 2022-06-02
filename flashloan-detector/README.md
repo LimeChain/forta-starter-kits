@@ -20,6 +20,13 @@ Describe each of the type of alerts fired by this agent
 
 - FLASHLOAN-ATTACK
   - Fired when a transaction contains a flashoan and the borrower made significant profit
+  - Severity is always set to "low"
+  - Type is always set to "exploit"
+  - Metadata:
+    - tokens - array of all tokens involved in the transaction
+
+- FLASHLOAN-ATTACK-WITH-HIGH-PROFIT
+  - Fired when a transaction contains a flashoan and the borrower made significant profit
   - Severity is always set to "high"
   - Type is always set to "exploit"
   - Metadata:
