@@ -36,4 +36,6 @@ This bot detects high approvals for a specific account and if any assets are tra
 
 ## Test Data
 
-The bot behaviour can be verified with the provided unit tests
+The bot behaviour can be verified with the provided unit tests and the provided block range:
+
+- 13650638..13724086 (BADGERDAO HACK, ethereum)

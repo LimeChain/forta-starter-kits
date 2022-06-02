@@ -109,6 +109,8 @@ const addToApprovals = (
     addressesTracked[address].addToApprovals(targetAssetAddress, spender, hash);
 
     return true;
+  } else if (valid_contracts.has(address)) {
+    return true;
   }
   return false;
 };
@@ -132,6 +134,8 @@ const addToTransfers = (
       from,
       hash
     );
+    return true;
+  } else if (valid_contracts.has(targetAddress)) {
     return true;
   }
   return false;
@@ -167,7 +171,7 @@ const provideHandleTransaction = (
       if (name == "Approval") {
         if (!valid_contracts.has(spender) && !invalid_addresses.has(spender)) {
           address_queue.add(spender);
-          functionQueue.push(() => {
+          functionQueue.push(() =>
             addToApprovals(
               addressesTracked,
               spender,
@@ -176,8 +180,8 @@ const provideHandleTransaction = (
               hash,
               valid_contracts,
               invalid_addresses
-            );
-          });
+            )
+          );
         } else {
           addToApprovals(
             addressesTracked,
@@ -195,7 +199,7 @@ const provideHandleTransaction = (
           !invalid_addresses.has(targetAddress)
         ) {
           address_queue.add(targetAddress);
-          functionQueue.push(() => {
+          functionQueue.push(() =>
             addToTransfers(
               addressesTracked,
               targetAddress,
@@ -204,8 +208,8 @@ const provideHandleTransaction = (
               hash,
               valid_contracts,
               invalid_addresses
-            );
-          });
+            )
+          );
         } else {
           addToTransfers(
             addressesTracked,
@@ -267,10 +271,15 @@ const functionQueueRuntimeJob = async () => {
     functionQueue.pop();
   }
   for (let [index, func] of functionQueue.entries()) {
-    const processed = func();
+    if (func != undefined) {
+      const processed = func();
 
-    if (processed) {
-      delete functionQueue[index];
+      if (processed) {
+        console.log("PROCESSED");
+        delete functionQueue[index];
+      }
+    } else {
+      break;
     }
   }
 
