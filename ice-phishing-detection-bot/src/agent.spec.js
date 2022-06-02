@@ -240,7 +240,7 @@ describe("Ice phishing detection bot", () => {
         Finding.fromObject({
           name: "Previously approved assets transferred",
           description: `0x123 transferred 1 assets from 1 accounts over period of 0.00005787037037037037 days`,
-          alertId: "ICE-PHISHING-HIGH-NO-APPROVALS",
+          alertId: "ICE-PHISHING-PREV-APPROVED-TRANSFERED",
           severity: FindingSeverity.High,
           type: FindingType.Exploit,
           metadata: {

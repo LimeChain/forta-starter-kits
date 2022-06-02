@@ -25,7 +25,7 @@ This bot detects high approvals for a specific account and if any assets are tra
     - LAST_TRANSACTION_HASH (the tranaction that was found last)
     - ASSETS_IMPACTED (the amount of assets that were impacted)
 
-- ICE-PHISHING-HIGH-NO-APPROVALS
+- ICE-PHISHING-PREV-APPROVED-TRANSFERED
   - Fired when an address that was flagged transfers assets from the previously approved list
   - Severity is always set to "high"
   - Type is always set to "exploit"

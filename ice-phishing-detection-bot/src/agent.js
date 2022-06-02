@@ -73,12 +73,20 @@ const validContract = async (contractAddress) => {
   return false;
 };
 
+const processInvalidAddresses = () => {
+  const queue = [...invalid_addresses, ...address_queue];
+  invalid_addresses = new Set();
+  address_queue = new Set(queue);
+  setTimeout(processInvalidAddresses, 18_000_000);
+};
+
 const initialize = async () => {
   provider = await getEthersProvider();
   const { chainId } = await provider.getNetwork();
   const { APIKey, API_URI } = getAPI(chainId);
   apiKey = APIKey;
   apiURI = API_URI;
+  setTimeout(processInvalidAddresses, 18_000_000);
 };
 
 const provideHandleTransaction = (addressesTracked, validContract) => {
@@ -216,7 +224,7 @@ const runJob = (addressesTracked) => {
             description: `${toAddress} transferred ${assetsImpactedCount} assets from ${accountsImpacted} accounts over period of ${
               ApprovalTimePeriod / (24 * 60 * 60)
             } days`,
-            alertId: "ICE-PHISHING-HIGH-NO-APPROVALS",
+            alertId: "ICE-PHISHING-PREV-APPROVED-TRANSFERED",
             severity: FindingSeverity.High,
             type: FindingType.Exploit,
             metadata: {
