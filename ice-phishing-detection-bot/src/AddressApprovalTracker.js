@@ -174,6 +174,9 @@ class AddressApprovalTracker {
       assetsImpacted: assetsImpactedArrFilteredFromDuplicated,
       assetsImpactedCount: assetsImpactedArrFilteredFromDuplicated.length,
       accountApproved: this.totalApprovalsForRange,
+      startDate: this.trackingApprovals[0].approvalDate,
+      endDate:
+        this.trackingApprovals[this.trackingApprovals.length - 1].approvalDate,
     };
     this.trackingApprovals = [];
     return finalObject;
@@ -193,6 +196,10 @@ class AddressApprovalTracker {
       assetsImpacted: assetsTransferedFilteredForDuplicates,
       assetsImpactedCount: assetsTransferedFilteredForDuplicates.length,
       accountsImpacted: this.totalAccountsTransferedFrom,
+      startDate: this.trackingTransfers[0].transferedDate,
+      endDate:
+        this.trackingTransfers[this.trackingTransfers.length - 1]
+          .transferedDate,
     };
     this.trackingTransfers = [];
     return finalObject;

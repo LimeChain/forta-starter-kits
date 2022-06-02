@@ -22,15 +22,20 @@ describe("Ice phishing detection bot", () => {
     mockTxEvent.filterLog = jest.fn();
     const mockValidContract = jest.fn();
     let mockAddressesTracked = [];
+    let mockValidAddresses = new Set();
+    let mockInvalidAddresses = new Set();
     let handleTransaction;
     let handleBlock;
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();
       mockValidContract.mockReset();
       mockAddressesTracked = [];
+      mockInvalidAddresses = new Set(["0x123", "0x1234"]);
+      mockValidAddresses = new Set();
       handleTransaction = provideHandleTransaction(
         mockAddressesTracked,
-        mockValidContract
+        mockValidAddresses,
+        mockInvalidAddresses
       );
       handleBlock = provideHandleBlock(mockAddressesTracked, mockValidContract);
     });
@@ -165,7 +170,7 @@ describe("Ice phishing detection bot", () => {
       expect(findings).toStrictEqual([
         Finding.fromObject({
           name: "High number of accounts granted approvals for digital assets",
-          description: `0x123 obtained transfer approval for 1 assets by 100 accounts over period of 0.00005787037037037037 days`,
+          description: `0x123 obtained transfer approval for 1 assets by 100 accounts over period of 0 days`,
           alertId: "ICE-PHISHING-HIGH-NUM-APPROVALS",
           severity: FindingSeverity.Low,
           type: FindingType.Suspicious,
@@ -227,7 +232,7 @@ describe("Ice phishing detection bot", () => {
       expect(findings).toStrictEqual([
         Finding.fromObject({
           name: "High number of accounts granted approvals for digital assets",
-          description: `0x123 obtained transfer approval for 1 assets by 100 accounts over period of 0.00005787037037037037 days`,
+          description: `0x123 obtained transfer approval for 1 assets by 100 accounts over period of 0 days`,
           alertId: "ICE-PHISHING-HIGH-NUM-APPROVALS",
           severity: FindingSeverity.Low,
           type: FindingType.Suspicious,
@@ -239,7 +244,7 @@ describe("Ice phishing detection bot", () => {
         }),
         Finding.fromObject({
           name: "Previously approved assets transferred",
-          description: `0x123 transferred 1 assets from 1 accounts over period of 0.00005787037037037037 days`,
+          description: `0x123 transferred 1 assets from 1 accounts over period of 0 days`,
           alertId: "ICE-PHISHING-PREV-APPROVED-TRANSFERED",
           severity: FindingSeverity.High,
           type: FindingType.Exploit,

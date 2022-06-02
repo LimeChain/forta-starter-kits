@@ -17,12 +17,15 @@ const eventABIs = [
   "event Approval(address indexed owner,address indexed spender,uint256 value)",
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ];
+const addressesTracked = {};
+
 let valid_contracts = new Set();
 let invalid_addresses = new Set();
 let address_queue = new Set();
-const addressesTracked = {};
+let functionQueue = [];
 let isRunning = false;
 let isRunningAddressQueue = false;
+let isRunningFunctionQueue = false;
 let result = [];
 let provider;
 let apiKey = "";
@@ -89,7 +92,56 @@ const initialize = async () => {
   setTimeout(processInvalidAddresses, 18_000_000);
 };
 
-const provideHandleTransaction = (addressesTracked, validContract) => {
+const addToApprovals = (
+  addressesTracked,
+  address,
+  targetAssetAddress,
+  spender,
+  hash,
+  valid_contracts,
+  invalid_addresses
+) => {
+  if (
+    !valid_contracts.has(address) &&
+    !address_queue.has(address) &&
+    invalid_addresses.has(address)
+  ) {
+    addressesTracked[address].addToApprovals(targetAssetAddress, spender, hash);
+
+    return true;
+  }
+  return false;
+};
+
+const addToTransfers = (
+  addressesTracked,
+  targetAddress,
+  targetAssetAddress,
+  from,
+  hash,
+  valid_contracts,
+  invalid_addresses
+) => {
+  if (
+    !valid_contracts.has(targetAddress) &&
+    !address_queue.has(targetAddress) &&
+    invalid_addresses.has(targetAddress)
+  ) {
+    addressesTracked[targetAddress].addToTransfers(
+      targetAssetAddress,
+      from,
+      hash
+    );
+    return true;
+  }
+  return false;
+};
+
+const provideHandleTransaction = (
+  addressesTracked,
+  valid_contracts,
+  invalid_addresses
+) => {
   return async function handleTransaction(txEvent) {
     const findings = [];
 
@@ -114,24 +166,55 @@ const provideHandleTransaction = (addressesTracked, validContract) => {
 
       if (name == "Approval") {
         if (!valid_contracts.has(spender) && !invalid_addresses.has(spender)) {
-          await validContract(spender);
-        }
-        if (!valid_contracts.has(spender) && !address_queue.has(spender)) {
-          addressesTracked[targetAddress].addToApprovals(
+          address_queue.add(spender);
+          functionQueue.push(() => {
+            addToApprovals(
+              addressesTracked,
+              spender,
+              targetAssetAddress,
+              spender,
+              hash,
+              valid_contracts,
+              invalid_addresses
+            );
+          });
+        } else {
+          addToApprovals(
+            addressesTracked,
+            spender,
             targetAssetAddress,
             spender,
-            hash
+            hash,
+            valid_contracts,
+            invalid_addresses
           );
         }
       } else if (name == "Transfer") {
-        if (!valid_contracts.has(to) && !invalid_addresses.has(to)) {
-          await validContract(to);
-        }
-        if (!valid_contracts.has(to) && !address_queue.has(to)) {
-          addressesTracked[targetAddress].addToTransfers(
+        if (
+          !valid_contracts.has(targetAddress) &&
+          !invalid_addresses.has(targetAddress)
+        ) {
+          address_queue.add(targetAddress);
+          functionQueue.push(() => {
+            addToTransfers(
+              addressesTracked,
+              targetAddress,
+              targetAssetAddress,
+              from,
+              hash,
+              valid_contracts,
+              invalid_addresses
+            );
+          });
+        } else {
+          addToTransfers(
+            addressesTracked,
+            targetAddress,
             targetAssetAddress,
             from,
-            hash
+            hash,
+            valid_contracts,
+            invalid_addresses
           );
         }
       }
@@ -150,6 +233,9 @@ const provideHandleBlock = (addressesTracked, validContract) => {
     if (!isRunningAddressQueue) {
       addressQueueRuntimeJob(validContract);
     }
+    if (!isRunningFunctionQueue) {
+      functionQueueRuntimeJob();
+    }
     if (result.length > 0) {
       findings = result;
       result = [];
@@ -166,12 +252,29 @@ const addressQueueRuntimeJob = async (validContract) => {
 
   for (let address of addresses) {
     const isFull = await validContract(address);
+
     if (isFull) {
       isRunningAddressQueue = false;
       break;
     }
   }
   isRunningAddressQueue = false;
+};
+
+const functionQueueRuntimeJob = async () => {
+  isRunningFunctionQueue = true;
+  if (functionQueue.length > 40_000) {
+    functionQueue.pop();
+  }
+  for (let [index, func] of functionQueue.entries()) {
+    const processed = func();
+
+    if (processed) {
+      delete functionQueue[index];
+    }
+  }
+
+  isRunningFunctionQueue = false;
 };
 const runJob = (addressesTracked) => {
   isRunning = true;
@@ -189,14 +292,15 @@ const runJob = (addressesTracked) => {
         assetsImpacted,
         accountApproved,
         assetsImpactedCount,
+        startDate,
+        endDate,
       } = AddressApprovalTrackerForObj.getApprovedForFlag();
+      const timePassedInDays = Math.floor((endDate - startDate) / (3600 * 24));
 
       result.push(
         Finding.fromObject({
           name: "High number of accounts granted approvals for digital assets",
-          description: `${toAddress} obtained transfer approval for ${assetsImpactedCount} assets by ${accountApproved} accounts over period of ${
-            ApprovalTimePeriod / (24 * 60 * 60)
-          } days`,
+          description: `${toAddress} obtained transfer approval for ${assetsImpactedCount} assets by ${accountApproved} accounts over period of ${timePassedInDays} days`,
           alertId: "ICE-PHISHING-HIGH-NUM-APPROVALS",
           severity: FindingSeverity.Low,
           type: FindingType.Suspicious,
@@ -216,14 +320,16 @@ const runJob = (addressesTracked) => {
         assetsImpacted,
         assetsImpactedCount,
         accountsImpacted,
+        startDate,
+        endDate,
       } = AddressApprovalTrackerForObj.getApprovedTransferedForFlag();
+      const timePassedInDays = Math.floor((endDate - startDate) / (3600 * 24));
+
       if (toAddress) {
         result.push(
           Finding.fromObject({
             name: "Previously approved assets transferred",
-            description: `${toAddress} transferred ${assetsImpactedCount} assets from ${accountsImpacted} accounts over period of ${
-              ApprovalTimePeriod / (24 * 60 * 60)
-            } days`,
+            description: `${toAddress} transferred ${assetsImpactedCount} assets from ${accountsImpacted} accounts over period of ${timePassedInDays} days`,
             alertId: "ICE-PHISHING-PREV-APPROVED-TRANSFERED",
             severity: FindingSeverity.High,
             type: FindingType.Exploit,
@@ -241,7 +347,11 @@ const runJob = (addressesTracked) => {
 };
 
 module.exports = {
-  handleTransaction: provideHandleTransaction(addressesTracked, validContract),
+  handleTransaction: provideHandleTransaction(
+    addressesTracked,
+    valid_contracts,
+    invalid_addresses
+  ),
   handleBlock: provideHandleBlock(addressesTracked, validContract),
   initialize,
   provideHandleTransaction,
