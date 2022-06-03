@@ -1,0 +1,6 @@
+node_modules
+dist
+forta.config.json
+publish.log
+.keys.config.js
+/src/.keys.config.js
