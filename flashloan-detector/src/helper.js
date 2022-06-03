@@ -1,5 +1,5 @@
 /* eslint-disable no-plusplus */
-const { ethers, getEthersProvider } = require('forta-agent');
+const { ethers, getEthersProvider, getTransactionReceipt } = require('forta-agent');
 const { Contract, Provider } = require('ethers-multicall');
 const axios = require('axios').default;
 
@@ -9,8 +9,6 @@ const ABI = ['function decimals() external view returns (uint8)'];
 const ethcallProvider = new Provider(getEthersProvider());
 
 const tokenDecimals = {};
-
-let cachedPrices = {};
 
 function getTokenPrice(chain, asset) {
   return `https://api.coingecko.com/api/v3/simple/token_price/${chain}?contract_addresses=${asset}&vs_currencies=usd`;
@@ -35,6 +33,7 @@ function getChainByChainId(chainId) {
 
 module.exports = {
   zero,
+  getTransactionReceipt,
   async init() {
     // Init the ethcall Provider and return a chain based on the chainId
     await ethcallProvider.init();
@@ -49,8 +48,8 @@ module.exports = {
       const { address } = event;
 
       // Convert the source and destination addresses to lower case
-      const src = s.toLowerCase();
-      const dst = d.toLowerCase();
+      const src = s?.toLowerCase();
+      const dst = d?.toLowerCase();
 
       // Set the profit to 0 if it's undefined
       if (!profits[address]) {
@@ -156,7 +155,6 @@ module.exports = {
   async calculateBorrowedAmount(asset, amount, chain) {
     const response = await axios.get(getTokenPrice(chain, asset));
     const usdPrice = response.data[asset].usd;
-    cachedPrices[asset] = usdPrice;
 
     if (!tokenDecimals[asset]) {
       const contract = new Contract(asset, ABI);
@@ -168,8 +166,6 @@ module.exports = {
     return tokenAmount * usdPrice;
   },
   clear() {
-    cachedPrices = {};
-
     const tokenAddresses = Object.keys(tokenDecimals);
     const tokensLength = tokenAddresses.length;
 

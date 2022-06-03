@@ -5,6 +5,7 @@ const { ethers } = require('forta-agent');
 const eulerEventSigs = [
   'event Borrow(address indexed underlying, address indexed account, uint amount)',
   'event Repay(address indexed underlying, address indexed account, uint amount)',
+  'event RequestBorrow(address indexed account, uint amount)',
 ];
 
 const zero = ethers.constants.Zero;
@@ -37,14 +38,17 @@ module.exports = {
     const markets = {};
 
     events.forEach((event) => {
-      const isBorrow = (event.name === 'Borrow');
-      const { address } = event;
+      const { address, name } = event;
       const { underlying, amount, account } = event.args;
+
+      // We process the RequestBorrow events later
+      if (name === 'RequestBorrow') return;
 
       const id = hashCode(address, underlying, account);
 
       if (!markets[id]) {
         markets[id] = {
+          address,
           underlying,
           account,
           deposited: zero,
@@ -52,7 +56,7 @@ module.exports = {
         };
       }
 
-      if (isBorrow) {
+      if (name === 'Borrow') {
         markets[id].withdrawn = markets[id].withdrawn.add(amount);
       } else {
         markets[id].deposited = markets[id].deposited.add(amount);
@@ -61,15 +65,34 @@ module.exports = {
 
     Object.values(markets).forEach((market) => {
       const {
+        address,
         underlying,
         account,
         deposited,
         withdrawn,
       } = market;
+
+      // The Borrow event always return the amount with 18 decimals which leads
+      // to wrong usd profits so we need to get the corresponding RequestBorrow
+      // borrow event and calculate the decimal difference
+      const amount = events
+        .filter((event) => event.name === 'RequestBorrow')
+        .filter((event) => event.args.account === account && event.address === address)
+        .map((event) => event.args.amount)
+        .filter((a) => withdrawn.toString().startsWith(a.toString()))[0];
+
+      // console.log(txEvent
+      //   .filterLog(requestBorrowEvent, address)
+      //   .filter((event) => {
+      //     console.log(event, account)
+      //     return event.args.account === account
+      //   }));
+
+      const decimalsDiff = withdrawn.div(amount);
       if (deposited.eq(withdrawn)) {
         flashloans.push({
           asset: underlying.toLowerCase(),
-          amount: withdrawn,
+          amount: withdrawn.div(decimalsDiff),
           account: account.toLowerCase(),
         });
       }
