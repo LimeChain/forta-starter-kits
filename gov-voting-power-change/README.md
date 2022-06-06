@@ -41,4 +41,7 @@ This bot detects changes in voting power for a specific address for a specific G
 
 ## Test Data
 
-The bot behaviour can be verified with the specified unit tests:
+The bot behaviour can be verified with the specified unit tests,
+The bot behaviour can also be verified with the following block range, but would require setting the config to the beanstalk protocol:
+
+- 14585637..14602800 (beanstalk protocol explot, ethereum)
