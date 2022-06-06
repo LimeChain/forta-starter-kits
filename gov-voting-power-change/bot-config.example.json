@@ -8,7 +8,7 @@
       "botType": "governance",
       "name": "",
       "contracts": {
-        "lido": {
+        "protocol_name": {
           "address": "",
           "abiFile": "protocol.json"
         }
