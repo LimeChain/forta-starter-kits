@@ -2,7 +2,7 @@
 
 ## Description
 
-This bot detects Transactions with Anomalies in Volume
+This bot detects Transactions with Anomalies in Volume - template
 
 ## Supported Chains
 
@@ -11,6 +11,8 @@ This bot detects Transactions with Anomalies in Volume
 - Polygon
 - Optimism
 - Arbitrum
+- Fantom
+- Avalanche
 
 ## Alerts
 
