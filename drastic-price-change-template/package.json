@@ -3,7 +3,13 @@
   "version": "0.0.1",
   "description": "Detects if the price of an asset changes drastically or there is a large discrepancy between an on-chain and an off-chain oracle",
   "chainIds": [
-    1
+    1,
+    10,
+    56,
+    137,
+    250,
+    42161,
+    43114
   ],
   "scripts": {
     "start": "npm run start:dev",

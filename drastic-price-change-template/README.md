@@ -6,7 +6,13 @@ This bot detects if the price of an asset changes drastically or there is a larg
 
 ## Supported Chains
 
-- Ethereum (For now)
+- Ethereum
+- Optimism
+- Binance Smart Chain
+- Polygon
+- Fantom
+- Arbitrum
+- Avalanche
 
 ## Alerts
 

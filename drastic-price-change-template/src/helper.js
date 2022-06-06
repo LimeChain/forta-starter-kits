@@ -1,15 +1,35 @@
 const { getEthersProvider, ethers } = require('forta-agent');
 const { default: axios } = require('axios');
 
-const ABI = [
+const CHAINLINK_ABI = [
   'function decimals() external view returns (uint8)',
   'function latestAnswer() public view returns (int256 answer)',
 ];
 
+const UNISWAP_ABI = [
+  'function observe(uint32[] calldata secondsAgos) external view returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s)',
+  'function token0() public view returns (address token)',
+  'function token1() public view returns (address token)',
+];
+
+const TOKEN_ABI = ['function decimals() external view returns (uint8)'];
+
 async function getChainlinkPrice(contract, decimals) {
   const answer = await contract.latestAnswer();
   const price = ethers.utils.formatUnits(answer, decimals);
-  return +parseFloat(price).toFixed(2);
+  return parseFloat(price);
+}
+
+async function getUniswapPrice(contract, exponent, interval) {
+  // return null if uniswap contract is not provided
+  if (!contract) return null;
+
+  // Get the time-weighted average price for a interval
+  const [tickCumulatives] = await contract.observe([interval, 0]);
+
+  const tick = (tickCumulatives[1] - tickCumulatives[0]) / interval;
+  const price = (1.0001 ** tick) * (10 ** exponent);
+  return price;
 }
 
 async function getCoingeckoPrice(id) {
@@ -18,18 +38,26 @@ async function getCoingeckoPrice(id) {
   return response.data[id].usd;
 }
 
-// Ethplorer only supports ETH
-// If we want to support more chains maybe we should keep a
-// list with the last X addresses that transfered the token
-async function getTopTokenHolders(address) {
-  const url = `https://api.ethplorer.io/getTopTokenHolders/${address}?apiKey=freekey&limit=100`;
-  const response = await axios.get(url);
-  const addresses = response.data.holders.map((e) => e.address);
-  return addresses;
+function getChainlinkContract(address) {
+  return new ethers.Contract(address, CHAINLINK_ABI, getEthersProvider());
 }
 
-function getChainlinkContract(address) {
-  return new ethers.Contract(address, ABI, getEthersProvider());
+// Returns the contract and the decimals diff between the 2 tokens
+async function getUniswapParams(address) {
+  const contract = new ethers.Contract(address, UNISWAP_ABI, getEthersProvider());
+
+  const token0 = await contract.token0();
+  const token1 = await contract.token1();
+
+  const token0Contract = new ethers.Contract(token0, TOKEN_ABI, getEthersProvider());
+  const token1Contract = new ethers.Contract(token1, TOKEN_ABI, getEthersProvider());
+
+  const token0Decimals = await token0Contract.decimals();
+  const token1Decimals = await token1Contract.decimals();
+
+  const exponent = token0Decimals - token1Decimals;
+
+  return [contract, exponent];
 }
 
 function calculatePercentage(price1, price2) {
@@ -39,8 +67,9 @@ function calculatePercentage(price1, price2) {
 
 module.exports = {
   getChainlinkPrice,
+  getUniswapPrice,
   getCoingeckoPrice,
-  getTopTokenHolders,
   getChainlinkContract,
+  getUniswapParams,
   calculatePercentage,
 };

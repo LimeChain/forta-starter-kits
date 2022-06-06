@@ -2,23 +2,35 @@ const {
   Finding,
   FindingSeverity,
   FindingType,
+  ethers,
+  getEthersProvider,
 } = require('forta-agent');
 const ARIMA = require('arima');
 
 const { priceDiscrepancyThreshold, asset } = require('../bot-config.json');
 const {
   getChainlinkPrice,
+  getUniswapPrice,
   getCoingeckoPrice,
-  getTopTokenHolders,
   getChainlinkContract,
+  getUniswapParams,
   calculatePercentage,
 } = require('./helper');
+
+const ABI = ['function balanceOf(address account) external view returns (uint256)'];
+const transferEventSig = 'event Transfer(address indexed from, address indexed to, uint256 value)';
+const assetContract = new ethers.Contract(asset.contract, ABI, getEthersProvider());
 
 const INTERVAL = 3600; // 1 hour
 const timeSeries = [];
 
+const MAX_TOKEN_HOLDERS = 10000;
+const tokenHolders = {};
+
 let lastTimestamp = 0;
 let chainlinkContract;
+let uniswapContract;
+let uniswapExponent;
 let assetDecimals;
 
 // Parameters chosen by finding the model with lowest error and fastest time
@@ -30,7 +42,7 @@ const arima = new ARIMA({
   verbose: false,
 });
 
-function provideInitialize(getChainlinkContractFn) {
+function provideInitialize(getChainlinkContractFn, getUniswapParamsFn) {
   return async function initialize() {
     if (!priceDiscrepancyThreshold
         || !asset
@@ -43,13 +55,53 @@ function provideInitialize(getChainlinkContractFn) {
     // Get asset decimals
     chainlinkContract = getChainlinkContractFn(asset.chainlinkFeedAddress);
     assetDecimals = await chainlinkContract.decimals();
+
+    if (asset.uniswapV3Pool) {
+      [uniswapContract, uniswapExponent] = await getUniswapParamsFn(asset.uniswapV3Pool);
+    }
+  };
+}
+
+function provideHandleTransaction(contract) {
+  return async function handleTransaction(txEvent) {
+    const transfers = txEvent.filterLog(transferEventSig, asset.contract);
+
+    if (transfers.length === 0) return [];
+
+    let uniqueAddresses = transfers
+      .map((event) => [event.args.from, event.args.to])
+      .flat();
+    uniqueAddresses = [...new Set(uniqueAddresses)];
+
+    // Get the last block balance for every address that is not tracked
+    await Promise.all(uniqueAddresses.map(async (address) => {
+      if (!tokenHolders[address]) {
+        const balance = await contract.balanceOf(
+          address,
+          { blockTag: txEvent.blockNumber - 1 },
+        );
+        const balanceNormalized = Number(ethers.utils.formatUnits(balance, assetDecimals));
+        tokenHolders[address] = balanceNormalized;
+      }
+    }));
+
+    // Update the address balances
+    transfers.forEach((event) => {
+      const { from, to, value } = event.args;
+      const valueNormalized = Number(ethers.utils.formatUnits(value, assetDecimals));
+      tokenHolders[from] -= valueNormalized;
+      tokenHolders[to] += valueNormalized;
+    });
+
+    // Always return empty findings
+    return [];
   };
 }
 
 function provideHandleBlock(
   getChainlinkPriceFn,
+  getUniswapPriceFn,
   getCoingeckoPriceFn,
-  getTopTokenHoldersFn,
 ) {
   return async function handleBlock(blockEvent) {
     const findings = [];
@@ -59,18 +111,37 @@ function provideHandleBlock(
     if (timestamp < lastTimestamp + INTERVAL) return findings;
 
     // Get the price from chainlink and coingecko
-    const [chainlinkPrice, coingeckoPrice] = await Promise.all([
+    const [chainlinkPrice, uniswapPrice, coingeckoPrice] = await Promise.all([
       getChainlinkPriceFn(chainlinkContract, assetDecimals),
+      getUniswapPriceFn(uniswapContract, uniswapExponent, INTERVAL),
       getCoingeckoPriceFn(asset.coingeckoId),
     ]);
 
+    const addresses = Object.keys(tokenHolders);
+
     if (calculatePercentage(chainlinkPrice, coingeckoPrice) >= priceDiscrepancyThreshold) {
-      const addresses = await getTopTokenHoldersFn(asset.contract);
       findings.push(Finding.fromObject({
         name: 'Price discrepancies',
         description: `Assets ${asset.contract} price information deviates significantly `
         + 'from Chainlink and CoinGecko with a price of '
         + `${chainlinkPrice} and ${coingeckoPrice} respectively`,
+        alertId: 'PRICE-DISCREPANCIES',
+        severity: FindingSeverity.High,
+        type: FindingType.Suspicious,
+        addresses,
+      }));
+    }
+
+    // Only calculate the percentage if the uniswap price is not null
+    if (
+      uniswapPrice
+      && calculatePercentage(chainlinkPrice, uniswapPrice) >= priceDiscrepancyThreshold
+    ) {
+      findings.push(Finding.fromObject({
+        name: 'Price discrepancies',
+        description: `Assets ${asset.contract} price information deviates significantly `
+        + 'from Chainlink and Uniswap with a price of '
+        + `${chainlinkPrice} and ${uniswapPrice} respectively`,
         alertId: 'PRICE-DISCREPANCIES',
         severity: FindingSeverity.High,
         type: FindingType.Suspicious,
@@ -87,7 +158,6 @@ function provideHandleBlock(
       const [low, high] = [pred - 1.96 * Math.sqrt(err), pred + 1.96 * Math.sqrt(err)];
 
       if (chainlinkPrice < low || chainlinkPrice > high) {
-        const addresses = await getTopTokenHoldersFn(asset.contract);
         findings.push(Finding.fromObject({
           name: 'Significant price fluctuation',
           description: `Assets ${asset.contract} price has experienced significant price fluctuations`,
@@ -102,6 +172,18 @@ function provideHandleBlock(
     // Keep the data for the last ~1 year
     if (timeSeries.length > 8760) timeSeries.shift();
 
+    if (addresses.length > MAX_TOKEN_HOLDERS) {
+      const entries = Object.entries(tokenHolders);
+
+      // Sort the holders by their tokens in ascending order
+      entries.sort((a, b) => a[1] - b[1]);
+
+      // Delete 10% of the holders based on their balance
+      for (let i = 0; i < MAX_TOKEN_HOLDERS / 10; i += 1) {
+        delete tokenHolders[entries[i][0]];
+      }
+    }
+
     timeSeries.push(chainlinkPrice);
     lastTimestamp = timestamp;
     return findings;
@@ -110,8 +192,11 @@ function provideHandleBlock(
 
 module.exports = {
   provideInitialize,
-  initialize: provideInitialize(getChainlinkContract),
+  initialize: provideInitialize(getChainlinkContract, getUniswapParams),
+  provideHandleTransaction,
+  handleTransaction: provideHandleTransaction(assetContract),
   provideHandleBlock,
-  handleBlock: provideHandleBlock(getChainlinkPrice, getCoingeckoPrice, getTopTokenHolders),
+  handleBlock: provideHandleBlock(getChainlinkPrice, getUniswapPrice, getCoingeckoPrice),
+  getTokenHolders: () => tokenHolders, // Exported for unit tests
   resetLastTimestamp: () => { lastTimestamp = 0; }, // Exported for unit tests
 };
