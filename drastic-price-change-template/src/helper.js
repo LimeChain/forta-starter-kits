@@ -24,12 +24,17 @@ async function getUniswapPrice(contract, exponent, interval) {
   // return null if uniswap contract is not provided
   if (!contract) return null;
 
-  // Get the time-weighted average price for a interval
-  const [tickCumulatives] = await contract.observe([interval, 0]);
+  // Sometimes the observe function fails with "OLD". In this case return null
+  try {
+    // Get the time-weighted average price for a interval
+    const [tickCumulatives] = await contract.observe([interval, 0]);
 
-  const tick = (tickCumulatives[1] - tickCumulatives[0]) / interval;
-  const price = (1.0001 ** tick) * (10 ** exponent);
-  return price;
+    const tick = (tickCumulatives[1] - tickCumulatives[0]) / interval;
+    const price = (1.0001 ** tick) * (10 ** exponent);
+    return price;
+  } catch {
+    return null;
+  }
 }
 
 async function getCoingeckoPrice(id) {

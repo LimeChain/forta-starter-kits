@@ -26,6 +26,8 @@ This bot detects if the price of an asset changes drastically or there is a larg
   - Severity is always set to "low"
   - Type is always set to "suspicious"
 
+## [Bot Setup Walkthrough](SETUP.md)
+
 ## Test Data
 
 The bot behaviour can be verified with the provided unit tests

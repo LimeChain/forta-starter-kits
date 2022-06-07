@@ -62,6 +62,7 @@ function provideInitialize(getChainlinkContractFn, getUniswapParamsFn) {
   };
 }
 
+// Listen for transfer events to get the token holders
 function provideHandleTransaction(contract) {
   return async function handleTransaction(txEvent) {
     const transfers = txEvent.filterLog(transferEventSig, asset.contract);
@@ -117,6 +118,7 @@ function provideHandleBlock(
       getCoingeckoPriceFn(asset.coingeckoId),
     ]);
 
+    console.log(chainlinkPrice, uniswapPrice, coingeckoPrice)
     const addresses = Object.keys(tokenHolders);
 
     if (calculatePercentage(chainlinkPrice, coingeckoPrice) >= priceDiscrepancyThreshold) {
