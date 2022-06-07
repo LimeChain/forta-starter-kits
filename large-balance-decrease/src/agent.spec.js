@@ -5,6 +5,7 @@ const {
   FindingSeverity,
   Finding,
   ethers,
+  getEthersProvider,
 } = require('forta-agent');
 const {
   handleTransaction,
@@ -30,12 +31,19 @@ jest.mock('forta-agent', () => {
   const original = jest.requireActual('forta-agent');
   return {
     ...original,
+    getEthersProvider: jest.fn(),
     ethers: {
       ...original.ethers,
-      Contract: jest.fn().mockImplementation(() => ({ balanceOf: mockBalanceOf })),
+      Contract: jest.fn().mockImplementation(() => ({
+        balanceOf: mockBalanceOf,
+        decimals: () => 18,
+      })),
     },
   };
 });
+
+const mockGetBalance = jest.fn();
+getEthersProvider.mockImplementation(() => ({ getBalance: mockGetBalance, _isSigner: true }));
 
 function resetState() {
   const contractAssets = getContractAssets();
@@ -49,16 +57,19 @@ describe('large balance decrease bot', () => {
       blockNumber: 1000,
       hash: txHash,
       filterLog: jest.fn(),
+      traces: [],
     };
 
     beforeEach(() => {
       resetState();
       mockTxEvent.filterLog.mockReset();
       mockBalanceOf.mockReset();
+      mockGetBalance.mockReset();
     });
 
     it('should return empty findings if there are no Transfer events', async () => {
       mockTxEvent.filterLog.mockReturnValueOnce([]);
+      mockGetBalance.mockResolvedValueOnce(ethers.BigNumber.from(100));
 
       const findings = await handleTransaction(mockTxEvent);
 
@@ -69,6 +80,7 @@ describe('large balance decrease bot', () => {
     it('should return empty findings if there are no Transfer to or from the contract address', async () => {
       const event = { args: { from: '0xfrom', to: '0xto' } };
       mockTxEvent.filterLog.mockReturnValueOnce([event]);
+      mockGetBalance.mockResolvedValueOnce(ethers.BigNumber.from(100));
 
       const findings = await handleTransaction(mockTxEvent);
 
@@ -86,6 +98,7 @@ describe('large balance decrease bot', () => {
         },
       };
       mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(100));
+      mockGetBalance.mockResolvedValueOnce(ethers.BigNumber.from(100));
       mockTxEvent.filterLog.mockReturnValueOnce([event]);
 
       const findings = await handleTransaction(mockTxEvent);
@@ -105,6 +118,7 @@ describe('large balance decrease bot', () => {
         },
       };
       mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(100));
+      mockGetBalance.mockResolvedValueOnce(ethers.BigNumber.from(100));
       mockTxEvent.filterLog.mockReturnValueOnce([event]);
 
       const findings = await handleTransaction(mockTxEvent);
@@ -124,6 +138,7 @@ describe('large balance decrease bot', () => {
         },
       };
       mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(100));
+      mockGetBalance.mockResolvedValueOnce(ethers.BigNumber.from(100));
       mockTxEvent.filterLog.mockReturnValueOnce([event]);
 
       const findings = await handleTransaction(mockTxEvent);
@@ -142,6 +157,34 @@ describe('large balance decrease bot', () => {
       })]);
       expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
       expect(mockBalanceOf).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return findings if the native balance is drained', async () => {
+      mockGetBalance.mockResolvedValueOnce(ethers.BigNumber.from(100));
+      mockTxEvent.traces.push({
+        action: {
+          callType: 'call',
+          from: contractAddress,
+          to: '0x812c0b2a2a0a74f6f6ed620fbd2b67fec7db2190',
+          value: '0x64',
+        },
+      });
+      mockTxEvent.filterLog.mockReturnValueOnce([]);
+
+      const findings = await handleTransaction(mockTxEvent);
+
+      expect(findings).toStrictEqual([Finding.fromObject({
+        name: 'Assets removed',
+        description: `All native tokens have been removed from ${contractAddress}.`,
+        alertId: 'BALANCE-DECREASE-ASSETS-ALL-REMOVED',
+        severity: FindingSeverity.Critical,
+        type: FindingType.Exploit,
+        metadata: {
+          firstTxHash: txHash,
+          lastTxHash: txHash,
+        },
+      })]);
+      expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -179,18 +222,19 @@ describe('large balance decrease bot', () => {
         blockNumber: 1000,
         hash: txHash,
         filterLog: jest.fn(),
+        traces: [],
       };
       const event = {
         address: asset,
         args: {
           from: contractAddress,
           to: '0xto',
-          value: ethers.BigNumber.from(100),
+          value: ethers.utils.parseEther('100'),
         },
       };
 
       // The tx withdraws 100 and the remaining balance is 1000 (10%)
-      mockBalanceOf.mockResolvedValueOnce(ethers.BigNumber.from(1100));
+      mockBalanceOf.mockResolvedValueOnce(ethers.utils.parseEther('1100'));
 
       mockTxEvent.filterLog.mockReturnValueOnce([event]);
       await handleTransaction(mockTxEvent);

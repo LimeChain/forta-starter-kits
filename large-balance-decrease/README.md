@@ -39,4 +39,6 @@ Describe each of the type of alerts fired by this bot
 
 ## Test Data
 
-The bot behaviour can be verified with the provided unit tests
+The bot behaviour can be verified with the following commands:
+ - `npm run block 13158432,13176177,13182676,13202391,13204222,13209657,13210732,13227537,13249184,13261896,13266552,13278108,13278248,13299220,13318971,13333652,13342229,13365887,13388139,13406596,13428536,13448391,13453200,13466158,13484500,13484904,13499798,13510000`. Note: only alerts if the example bot-config.json file is used
+ - `npm run tx 0x0fe2542079644e107cbf13690eb9c2c65963ccb79089ff96bfaf8dced2331c92`. Note: you have to change the address to `0xd06527d5e56a3495252a528c4987003b712860ee`
