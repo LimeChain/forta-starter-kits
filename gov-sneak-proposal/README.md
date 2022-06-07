@@ -1,26 +1,38 @@
-# Large Tether Transfer Agent
+# Sneak Governance Proposal Approval
 
 ## Description
 
-This agent detects transactions with large Tether transfers
+This bot detects wheter there is a sneak governance proposal about to be approved or is already approved
 
 ## Supported Chains
 
 - Ethereum
-- List any other chains this agent can support e.g. BSC
+- Binance Smart Chain
+- Polygon
+- Avalanche
+- Optimism
+- Fantom
+- Arbitrum
 
 ## Alerts
 
-Describe each of the type of alerts fired by this agent
+- SNEAK-GOVT-PROPOSAL-APPROVAL-PASSED
 
-- FORTA-1
-  - Fired when a transaction contains a Tether transfer over 10,000 USDT
-  - Severity is always set to "low" (mention any conditions where it could be something else)
-  - Type is always set to "info" (mention any conditions where it could be something else)
-  - Mention any other type of metadata fields included with this alert
+  - Fired when a sneak proposal is passed
+  - Severity is always set to "medium"
+  - Type is always set to "suspicious"
+  - Metadata Fields:
+    - ACCOUNTS (accounts involved in the vote)
+
+- SNEAK-GOVT-PROPOSAL-APPROVAL-ABOUT-TO-PASS
+  - Fired when a sneak proposal is about to pass
+  - Severity is always set to "medium"
+  - Type is always set to "suspicious"
+  - Metadata Fields:
+    - ACCOUNTS (accounts involved in the vote)
 
 ## Test Data
 
-The agent behaviour can be verified with the following transactions:
+The bot behvaiour can be verified with the supplied unit tests or with these blocks:
 
-- 0x3a0f757030beec55c22cbc545dd8a844cbbb2e6019461769e1bc3f3a95d10826 (15,000 USDT)
+- `yarn block 14879134,14883382,14884348,14884491,14896539,14897168,14897208,14897450,14897729` (need to use example configuration and expected behaviour is to return no findings, ethereum)
