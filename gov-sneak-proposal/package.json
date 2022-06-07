@@ -1,7 +1,7 @@
 {
-  "name": "forta-agent-starter",
+  "name": "gov-sneak-proposal",
   "version": "0.0.1",
-  "description": "Forta Agent Javascript starter project",
+  "description": "This bot detects wheter there is a sneak governance proposal about to be approved or is already approved",
   "chainIds": [
     1,
     137,
