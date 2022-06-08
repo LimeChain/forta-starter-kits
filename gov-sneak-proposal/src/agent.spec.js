@@ -223,9 +223,7 @@ describe("SneakProposal", () => {
           type: FindingType.Suspicious,
           metadata: {
             ACCOUNTS:
-              mockProposalTracker[
-                mockProposalVoteEvent.args.voteId
-              ].voters.join(","),
+              mockProposalTracker[mockProposalVoteEvent.args.voteId].voters,
           },
         }),
       ]);
@@ -260,9 +258,7 @@ describe("SneakProposal", () => {
           type: FindingType.Suspicious,
           metadata: {
             ACCOUNTS:
-              mockProposalTracker[
-                mockProposalVoteEvent.args.voteId
-              ].voters.join(","),
+              mockProposalTracker[mockProposalVoteEvent.args.voteId].voters,
           },
         }),
       ]);

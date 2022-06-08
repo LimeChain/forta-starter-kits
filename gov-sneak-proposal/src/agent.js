@@ -15,8 +15,6 @@ const { BigNumber } = require("ethers");
 const { isBigNumberish } = require("@ethersproject/bignumber/lib/bignumber");
 const proposalTracker = {};
 
-let isRunningJob = false;
-let localFindings = [];
 let protocolAddress;
 let minAcceptQuorumPct = 0;
 let pctBase = 0;
@@ -27,7 +25,6 @@ const provideInitialize = () => {
   return async () => {
     const contracts = Object.entries(bots[0].contracts);
     protocolAddress = contracts[0][1].address;
-    tokenAddress = contracts[0][1].voteTokenAddress;
 
     proposalEvents = contracts[0][1].eventABIs;
 
@@ -52,8 +49,10 @@ const provideInitialize = () => {
 const addProposalToTracker = (proposalID, proposalTracker, voter) => {
   const objectKeys = Object.keys(proposalTracker);
   if (objectKeys.length > maxTracked) {
-    for (let i = 0; i < objectKeys.length / 2; i++) {
-      delete proposalTracker[objectKeys[i]];
+    for (let key of objectKeys) {
+      if (proposalTracker[key].executed == true) {
+        delete proposalTracker[key];
+      }
     }
   }
   if (!proposalTracker[proposalID] && voter) {
@@ -153,71 +152,61 @@ const provideHandleBlock = (proposalTracker) => {
   return async (blockEvent) => {
     let findings = [];
 
-    if (!isRunningJob) {
-      runJob(proposalTracker);
-      isRunningJob = true;
-    }
+    for (let key of Object.keys(proposalTracker)) {
+      const proposalTracked = proposalTracker[key];
 
-    if (localFindings.length > 0) {
-      findings = localFindings;
-      localFindings = [];
+      if (
+        proposalTracked.totalVoted <= accountThreshold &&
+        BigNumber.from(proposalTracked.currentPCT).gte(
+          BigNumber.from(minAcceptQuorumPct)
+        ) &&
+        proposalTracked.executed
+      ) {
+        findings.push(
+          Finding.fromObject({
+            name: "Sneak Governance Proposal Approval Passed",
+            description: `Governance proposal was approved with votes from only ${proposalTracked.totalVoted} accounts`,
+            alertId: "SNEAK-GOVT-PROPOSAL-APPROVAL-PASSED",
+            protocol: protocolName,
+            severity: FindingSeverity.Low,
+            type: FindingType.Suspicious,
+            metadata: {
+              ACCOUNTS: proposalTracked.voters,
+            },
+          })
+        );
+      } else if (
+        //Here we calculate if the currentPCT is greater or equal than 95% of the quorum required to pass the vote, so that we can alert that the proposal is about to pass
+        BigNumber.from(proposalTracked.currentPCT).gte(
+          BigNumber.from(minAcceptQuorumPct).sub(
+            BigNumber.from(minAcceptQuorumPct).div(
+              BigNumber.from(preExecutionThreshold)
+            )
+          )
+        ) &&
+        BigNumber.from(proposalTracked.currentPCT).lt(
+          BigNumber.from(minAcceptQuorumPct)
+        ) &&
+        proposalTracked.totalVoted <= accountThreshold
+      ) {
+        findings.push(
+          Finding.fromObject({
+            name: "Sneak Governance Proposal Approval About To Pass",
+            description: `Governance proposal is about to pass with votes from only ${proposalTracked.totalVoted} accounts `,
+            alertId: "SNEAK-GOVT-PROPOSAL-APPROVAL-ABOUT-TO-PASS",
+            protocol: protocolName,
+            severity: FindingSeverity.Medium,
+            type: FindingType.Suspicious,
+            metadata: {
+              ACCOUNTS: proposalTracked.voters,
+            },
+          })
+        );
+      }
     }
 
     return findings;
   };
-};
-const runJob = (proposalTracker) => {
-  for (let key of Object.keys(proposalTracker)) {
-    const proposalTracked = proposalTracker[key];
-
-    if (
-      proposalTracked.totalVoted <= accountThreshold &&
-      BigNumber.from(proposalTracked.currentPCT).gte(
-        BigNumber.from(minAcceptQuorumPct)
-      ) &&
-      proposalTracked.executed
-    ) {
-      localFindings.push(
-        Finding.fromObject({
-          name: "Sneak Governance Proposal Approval Passed",
-          description: `Governance proposal was approved with votes from only ${proposalTracked.totalVoted} accounts`,
-          alertId: "SNEAK-GOVT-PROPOSAL-APPROVAL-PASSED",
-          protocol: protocolName,
-          severity: FindingSeverity.Low,
-          type: FindingType.Suspicious,
-          metadata: {
-            ACCOUNTS: proposalTracked.voters.join(","),
-          },
-        })
-      );
-    } else if (
-      BigNumber.from(proposalTracked.currentPCT).gte(
-        BigNumber.from(minAcceptQuorumPct).sub(
-          BigNumber.from(minAcceptQuorumPct).div(
-            BigNumber.from(preExecutionThreshold)
-          )
-        )
-      ) &&
-      BigNumber.from(proposalTracked.currentPCT).lt(
-        BigNumber.from(minAcceptQuorumPct)
-      )
-    ) {
-      localFindings.push(
-        Finding.fromObject({
-          name: "Sneak Governance Proposal Approval About To Pass",
-          description: `Governance proposal is about to pass with votes from only ${proposalTracked.totalVoted} accounts `,
-          alertId: "SNEAK-GOVT-PROPOSAL-APPROVAL-ABOUT-TO-PASS",
-          protocol: protocolName,
-          severity: FindingSeverity.Medium,
-          type: FindingType.Suspicious,
-          metadata: {
-            ACCOUNTS: proposalTracked.voters.join(","),
-          },
-        })
-      );
-    }
-  }
-  isRunningJob = false;
 };
 
 module.exports = {
