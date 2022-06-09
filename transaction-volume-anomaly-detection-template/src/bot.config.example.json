@@ -1,0 +1,17 @@
+{
+  "developerAbbreviation": "",
+  "protocolName": "",
+  "protocolAbbreviation": "",
+  "bots": [
+    {
+      "botType": "transaction_volume",
+      "name": "",
+      "contracts": {
+        "": {
+          "address": "",
+          "chainId": 1
+        }
+      }
+    }
+  ]
+}
