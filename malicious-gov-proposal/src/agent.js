@@ -37,7 +37,6 @@ function processSignatures(event) {
 
       if (!decodedValue) return;
 
-      console.log(min, decodedValue, max)
       if (decodedValue < min || decodedValue > max) {
         finding = true;
       }
