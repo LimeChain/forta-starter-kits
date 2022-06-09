@@ -1,0 +1,51 @@
+{
+  "address": "0x2e59A20f205bB85a89C53f1936454680651E618e",
+  "type": "aragon",
+  "parameters": [
+    {
+      "string": "burn * stETH",
+      "min": 40,
+      "max": 50
+    },
+    {
+      "string": "burn * LDO",
+      "min": 4000000,
+      "max": 5000000
+    },
+    {
+      "string": "allocate * LDO", 
+      "min": 10,
+      "max": 100
+    },
+    {
+      "string": "send * LDO", 
+      "min": 100000,
+      "max": 200000
+    },
+    {
+      "string": "issue * LDO", 
+      "min": 100000,
+      "max": 200000
+    },
+    {
+      "string": "assign * LDO", 
+      "min": 100000,
+      "max": 200000
+    },
+    {
+      "string": "set staking limit rate to * ETH", 
+      "min": 100000,
+      "max": 130000
+    },
+    {
+      "string": "Set Execution Layer rewards withdrawal limit to *BP", 
+      "min": 0,
+      "max": 1
+    },
+    {
+      "string": "Fund _ with * stETH", 
+      "min": 0,
+      "max": 1
+    }
+  ]
+}
