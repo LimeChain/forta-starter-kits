@@ -1,0 +1,24 @@
+{
+  "developerAbbreviation": "",
+  "protocolName": "lido",
+  "protocolAbbreviation": "lido",
+  "gatherMode": "any",
+  "bots": [
+    {
+      "botType": "governance",
+      "name": "governance_sneak_proposal",
+      "contracts": {
+        "lido": {
+          "address": "0x2e59A20f205bB85a89C53f1936454680651E618e",
+          "minAcceptanceQuorumPCT": "50000000000000000",
+          "PCT_BASE": "1000000000000000000",
+          "eventABIs": [
+            "event StartVote(uint256 indexed voteId, address indexed creator, string metadata)",
+            "event CastVote(uint256 indexed voteId, address indexed voter, bool supports, uint256 stake)",
+            "event ExecuteVote(uint256 indexed voteId)"
+          ]
+        }
+      }
+    }
+  ]
+}
