@@ -2,7 +2,7 @@
 
 ## Description
 
-This bot detects if a proposal gets submitted falling outside with unreasonable parameters
+This bot detects if a proposal gets submitted with unreasonable parameters
 
 ## Bot Setup Walkthrough
 
