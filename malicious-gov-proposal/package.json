@@ -1,7 +1,7 @@
 {
   "name": "malicious-governance-proposal",
   "version": "0.0.1",
-  "description": "This bot detects if a proposal gets submitted falling outside with unreasonable parameters",
+  "description": "This bot detects if a proposal gets submitted with unreasonable parameters",
   "chainIds": [
     1,
     10,

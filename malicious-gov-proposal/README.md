@@ -2,7 +2,7 @@
 
 ## Description
 
-This bot detects if a proposal gets submitted falling outside with unreasonable parameters
+This bot detects if a proposal gets submitted with unreasonable parameters
 
 ## Supported Chains
 
@@ -17,7 +17,7 @@ This bot detects if a proposal gets submitted falling outside with unreasonable 
 ## Alerts
 
 - POSSIBLE-MALICIOUS-GOVT-PROPOSAL-CREATED
-  - Fired when a proposal gets submitted falling outside with unreasonable parameters
+  - Fired when a proposal gets submitted with unreasonable parameters
   - Severity is always set to "high"
   - Type is always set to "exploit"
 
