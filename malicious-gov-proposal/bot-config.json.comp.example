@@ -1,0 +1,32 @@
+{
+  "address": "0x408ED6354d4973f66138C91495F2f2FCbd8724C3",
+  "type": "comp",
+  "parameters": [
+    {
+      "signature": "enableFeeAmount(uint24 fee, int24 tickSpacing)",
+      "thresholds": [
+        {
+          "name": "fee",
+          "min": 40,
+          "max": 50
+        },
+        {
+          "name": "tickSpacing", 
+          "min": 10,
+          "max": 100
+        }
+      ]
+    },
+    {
+      "signature": "transfer(address recipient, uint256 amount)",
+      "thresholds": [
+        {
+          "name": "amount", 
+          "min": -1,
+          "max": 100,
+          "decimals": 18
+        }
+      ]
+    }
+  ]
+}
