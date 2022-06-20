@@ -31,6 +31,19 @@ function getChainByChainId(chainId) {
   }
 }
 
+function getNativeTokenByChainId(chainId) {
+  switch (chainId) {
+    case 1: return 'ethereum';
+    case 10: return 'ethereum';
+    case 56: return 'binancecoin';
+    case 137: return 'matic-network';
+    case 250: return 'fantom';
+    case 42161: return 'ethereum';
+    case 43114: return 'avalanche-2';
+    default: return null;
+  }
+}
+
 module.exports = {
   zero,
   getTransactionReceipt,
@@ -38,7 +51,10 @@ module.exports = {
     // Init the ethcall Provider and return a chain based on the chainId
     await ethcallProvider.init();
     const { chainId } = await getEthersProvider().getNetwork();
-    return getChainByChainId(chainId);
+    return {
+      chain: getChainByChainId(chainId),
+      nativeToken: getNativeTokenByChainId(chainId),
+    };
   },
   calculateTokenProfits(events, account) {
     const profits = {};
@@ -144,9 +160,9 @@ module.exports = {
 
     return totalTokensProfit;
   },
-  async calculateNativeUsdProfit(amount, chain) {
-    const response = await axios.get(getNativeTokenPrice(chain));
-    const usdPrice = response.data[chain].usd;
+  async calculateNativeUsdProfit(amount, token) {
+    const response = await axios.get(getNativeTokenPrice(token));
+    const usdPrice = response.data[token].usd;
 
     // Does every chain has 18 decimals?
     const tokenAmount = ethers.utils.formatEther(amount);

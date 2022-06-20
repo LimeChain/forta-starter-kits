@@ -81,12 +81,7 @@ module.exports = {
         .map((event) => event.args.amount)
         .filter((a) => withdrawn.toString().startsWith(a.toString()))[0];
 
-      // console.log(txEvent
-      //   .filterLog(requestBorrowEvent, address)
-      //   .filter((event) => {
-      //     console.log(event, account)
-      //     return event.args.account === account
-      //   }));
+      if (!amount) return;
 
       const decimalsDiff = withdrawn.div(amount);
       if (deposited.eq(withdrawn)) {
