@@ -21,4 +21,4 @@ This bot detects flashbot transactions
 
 ## Test Data
 
-The agent behaviour can be verified with the provided unit tests
+The bot behaviour can be verified with the provided unit tests
