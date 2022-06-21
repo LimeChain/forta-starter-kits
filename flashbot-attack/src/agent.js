@@ -34,7 +34,7 @@ const handleBlock = async () => {
           description: `${from} interacted with ${to} in a flashbot transaction`,
           alertId: 'FLASHBOT-TRANSACTION',
           severity: FindingSeverity.Low,
-          type: FindingType.Suspicious,
+          type: FindingType.Info,
           metadata: {
             from,
             to,

@@ -104,7 +104,7 @@ describe('flashbot attack bot', () => {
         description: `${from2} interacted with ${to2} in a flashbot transaction`,
         alertId: 'FLASHBOT-TRANSACTION',
         severity: FindingSeverity.Low,
-        type: FindingType.Suspicious,
+        type: FindingType.Info,
         metadata: {
           from: from2,
           to: to2,
@@ -115,7 +115,7 @@ describe('flashbot attack bot', () => {
         description: `${from3} interacted with ${to3} in a flashbot transaction`,
         alertId: 'FLASHBOT-TRANSACTION',
         severity: FindingSeverity.Low,
-        type: FindingType.Suspicious,
+        type: FindingType.Info,
         metadata: {
           from: from3,
           to: to3,
