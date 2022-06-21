@@ -21,7 +21,7 @@ const txHash = 'hash';
 // Mock the config file
 jest.mock('../bot-config.json', () => ({
   aggregationTimePeriod: 100,
-  address: contractAddress,
+  contractAddress,
 }), { virtual: true });
 
 const mockBalanceOf = jest.fn();

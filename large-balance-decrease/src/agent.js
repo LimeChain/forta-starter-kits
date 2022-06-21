@@ -8,7 +8,7 @@ const {
 const ARIMA = require('arima');
 const {
   aggregationTimePeriod,
-  address: a,
+  contractAddress: a,
 } = require('../bot-config.json');
 
 const ERC20_TRANSFER_EVENT = 'event Transfer(address indexed from, address indexed to, uint256 value)';
