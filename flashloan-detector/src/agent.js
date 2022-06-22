@@ -8,12 +8,15 @@ const { getFlashloans: getFlashloansFn } = require('./flashloan-detector');
 const helperModule = require('./helper');
 
 let chain;
+let nativeToken;
+
+const PROFIT_THRESHOLD = 500_000;
 const PERCENTAGE_THRESHOLD = 2;
-const PROFIT_THRESHOLD = 100_000;
+const PROFIT_THRESHOLD_WITH_HIGH_PERCENTAGE = 100_000;
 
 function provideInitialize(helper) {
   return async function initialize() {
-    chain = await helper.init();
+    ({ chain, nativeToken } = await helper.init());
   };
 }
 
@@ -83,16 +86,22 @@ function provideHandleTransaction(helper, getFlashloans) {
     }
 
     if (!totalNativeProfit.isZero()) {
-      nativeUsdProfit = await helper.calculateNativeUsdProfit(totalNativeProfit, chain);
+      nativeUsdProfit = await helper.calculateNativeUsdProfit(totalNativeProfit, nativeToken);
     }
 
     const totalProfit = tokensUsdProfit + nativeUsdProfit;
     const percentage = (totalProfit / totalBorrowed) * 100;
 
-    if (percentage > PERCENTAGE_THRESHOLD && totalProfit > PROFIT_THRESHOLD) {
+    console.log('Chain     :', chain);
+    console.log('TX hash   :', txEvent.hash);
+    console.log('Borrowed  :', totalBorrowed.toFixed(2));
+    console.log('Profit    :', totalProfit.toFixed(2));
+    console.log('Percentage:', percentage.toFixed(2));
+
+    if (percentage > PERCENTAGE_THRESHOLD && totalProfit > PROFIT_THRESHOLD_WITH_HIGH_PERCENTAGE) {
       findings.push(Finding.fromObject({
         name: 'Flashloan detected',
-        description: `${initiator} launched flash loan attack and made profit > $${PROFIT_THRESHOLD}`,
+        description: `${initiator} launched flash loan attack and made profit > $${PROFIT_THRESHOLD_WITH_HIGH_PERCENTAGE}`,
         alertId: 'FLASHLOAN-ATTACK-WITH-HIGH-PROFIT',
         severity: FindingSeverity.High,
         type: FindingType.Exploit,
@@ -107,6 +116,18 @@ function provideHandleTransaction(helper, getFlashloans) {
         description: `${initiator} launched flash loan attack`,
         alertId: 'FLASHLOAN-ATTACK',
         severity: FindingSeverity.Low,
+        type: FindingType.Exploit,
+        metadata: {
+          profit: totalProfit.toFixed(2),
+          tokens: tokensArray,
+        },
+      }));
+    } else if (totalProfit > PROFIT_THRESHOLD) {
+      findings.push(Finding.fromObject({
+        name: 'Flashloan detected',
+        description: `${initiator} launched flash loan attack and made profit > $${PROFIT_THRESHOLD}`,
+        alertId: 'FLASHLOAN-ATTACK-WITH-HIGH-PROFIT',
+        severity: FindingSeverity.High,
         type: FindingType.Exploit,
         metadata: {
           profit: totalProfit.toFixed(2),

@@ -1,6 +1,6 @@
 {
   "name": "flashloan-detection-bot",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Forta bot that detects if a transaction contains a flashloan and the borrower made significant profit",
   "chainIds": [
     1,
@@ -32,10 +32,10 @@
     "forta-agent": "^0.1.6"
   },
   "devDependencies": {
-    "eslint": "^8.16.0",
+    "eslint": "^8.18.0",
     "eslint-config-airbnb-base": "^15.0.0",
     "eslint-plugin-import": "^2.26.0",
-    "jest": "^28.1.0",
+    "jest": "^28.1.1",
     "nodemon": "^2.0.16"
   }
 }
