@@ -154,7 +154,16 @@ const provideHandleBlock = (proposalTracker) => {
 
     for (let key of Object.keys(proposalTracker)) {
       const proposalTracked = proposalTracker[key];
-
+      console.log("Proposal ID:", key);
+      console.log("Total Voted:", proposalTracked.totalVoted);
+      console.log("Account Threshold:", accountThreshold);
+      console.log(
+        "Should be accepted:",
+        BigNumber.from(proposalTracked.currentPCT).gte(
+          BigNumber.from(minAcceptQuorumPct)
+        )
+      );
+      console.log("Is executed:", proposalTracked.executed);
       if (
         proposalTracked.totalVoted <= accountThreshold &&
         BigNumber.from(proposalTracked.currentPCT).gte(

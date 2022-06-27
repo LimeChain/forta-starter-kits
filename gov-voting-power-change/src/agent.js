@@ -241,6 +241,20 @@ const provideHandleBlock = (addressTracker) => {
 const runJob = (blockEvent, addressTracker) => {
   for (let key of Object.keys(addressTracker)) {
     const addressTracked = addressTracker[key];
+    console.log("Address Tracked for accumulation:", key);
+    console.log(
+      "Power gain in percentage:",
+      addressTracked.powerGainInPercentage
+    );
+    console.log(
+      "Threshold Accumulation:",
+      threshholdOfAditionalVotingPowerAccumulated
+    );
+    console.log(
+      "Threshold Distribution:",
+      threshholdOfAditionalVotingPowerDistributed
+    );
+    console.log("Has Voted:", addressTracked.hasVoted);
 
     if (!distributionTracking) {
       if (

@@ -223,7 +223,7 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
 
   for (let contract of contractsForChain) {
     const tracker = contractTracker[contract];
-
+    console.log("Current contract:", contract);
     {
       const [pred, error] = tracker.successfulTx.TSA.predict(1);
 
@@ -238,7 +238,13 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
         tracker.successfulTx.txTracker[
           tracker.successfulTx.txTracker.length - 2
         ];
-
+      console.log("Current pred successful tx: ", pred);
+      console.log("Current count successful tx: ", count);
+      console.log("Current pred baseline successful tx:", baseline);
+      console.log(
+        "Should alert high num successful tx:",
+        count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])
+      );
       if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({
@@ -268,7 +274,13 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
         tracker.failedTx.txTracker[tracker.failedTx.txTracker.length - 1];
       const baseline =
         tracker.failedTx.txTracker[tracker.failedTx.txTracker.length - 2];
-
+      console.log("Current pred failed tx: ", pred);
+      console.log("Current count failed tx: ", count);
+      console.log("Current pred baseline failed tx:", baseline);
+      console.log(
+        "Should alert high num failed tx:",
+        count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])
+      );
       if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({
@@ -302,7 +314,13 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
         tracker.successfulInternalTx.txTracker[
           tracker.successfulInternalTx.txTracker.length - 2
         ];
-
+      console.log("Current pred successful internal tx: ", pred);
+      console.log("Current count successful internal tx: ", count);
+      console.log("Current pred baseline successful internal tx:", baseline);
+      console.log(
+        "Should alert high num successful internal tx:",
+        count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])
+      );
       if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({
@@ -334,7 +352,13 @@ const runJob = (contractTracker, contractsForChain, blockEvent) => {
         tracker.failedInternalTx.txTracker[
           tracker.failedInternalTx.txTracker.length - 2
         ];
-
+      console.log("Current pred failed internal tx: ", pred);
+      console.log("Current count failed internal tx: ", count);
+      console.log("Current pred baseline failed internal tx:", baseline);
+      console.log(
+        "Should alert high num failed internal tx:",
+        count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])
+      );
       if (count * globalSensitivity > pred[0] + 1.96 * Math.sqrt(error[0])) {
         localFindings.push(
           Finding.fromObject({

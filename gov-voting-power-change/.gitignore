@@ -1,0 +1,6 @@
+node_modules
+dist
+forta.config.json
+coverage
+bot-config.json
+publish.log
