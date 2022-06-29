@@ -156,10 +156,13 @@ async function runJob(trackerBuckets) {
   const findings = [];
 
   for (let tracker of trackerBuckets) {
+    console.log("Current tracked address:", tracker.addressTracked);
     if (tracker.isTrainedMints) {
       const count = tracker.getCurrentMintedCount();
       const [high, pred] = tracker.getHighAndPredMints();
-
+      console.log("Current minted count:", count);
+      console.log("Current predicted max value:", high);
+      console.log("Should alert high mints:", count > high);
       if (count > high) {
         const findingData = tracker.getMintsForFlag();
         findings.push(
@@ -183,6 +186,9 @@ async function runJob(trackerBuckets) {
     if (tracker.isTrainedBorrows) {
       const count = tracker.getCurrentBorrowedCount();
       const [high, pred] = tracker.getHighAndPredBorrows();
+      console.log("Current borrow count:", count);
+      console.log("Current max predicted borrows:", high);
+      console.log("Should alert borrows:", count > high);
       if (count > high) {
         const findingData = tracker.getBorrowsForFlag();
         findings.push(

@@ -4,10 +4,10 @@ const {
   FindingType,
   ethers,
   getEthersProvider,
-} = require('forta-agent');
-const ARIMA = require('arima');
+} = require("forta-agent");
+const ARIMA = require("arima");
 
-const { priceDiscrepancyThreshold, asset } = require('../bot-config.json');
+const { priceDiscrepancyThreshold, asset } = require("../bot-config.json");
 const {
   getChainlinkPrice,
   getUniswapPrice,
@@ -15,11 +15,18 @@ const {
   getChainlinkContract,
   getUniswapParams,
   calculatePercentage,
-} = require('./helper');
+} = require("./helper");
 
-const ABI = ['function balanceOf(address account) external view returns (uint256)'];
-const transferEventSig = 'event Transfer(address indexed from, address indexed to, uint256 value)';
-const assetContract = new ethers.Contract(asset.contract, ABI, getEthersProvider());
+const ABI = [
+  "function balanceOf(address account) external view returns (uint256)",
+];
+const transferEventSig =
+  "event Transfer(address indexed from, address indexed to, uint256 value)";
+const assetContract = new ethers.Contract(
+  asset.contract,
+  ABI,
+  getEthersProvider()
+);
 
 const INTERVAL = 3600; // 1 hour
 const timeSeries = [];
@@ -44,12 +51,14 @@ const arima = new ARIMA({
 
 function provideInitialize(getChainlinkContractFn, getUniswapParamsFn) {
   return async function initialize() {
-    if (!priceDiscrepancyThreshold
-        || !asset
-        || !asset.chainlinkFeedAddress
-        || !asset.coingeckoId
-        || !asset.contract) {
-      throw new Error('You need to provide valid config file');
+    if (
+      !priceDiscrepancyThreshold ||
+      !asset ||
+      !asset.chainlinkFeedAddress ||
+      !asset.coingeckoId ||
+      !asset.contract
+    ) {
+      throw new Error("You need to provide valid config file");
     }
 
     // Get asset decimals
@@ -57,7 +66,9 @@ function provideInitialize(getChainlinkContractFn, getUniswapParamsFn) {
     assetDecimals = await chainlinkContract.decimals();
 
     if (asset.uniswapV3Pool) {
-      [uniswapContract, uniswapExponent] = await getUniswapParamsFn(asset.uniswapV3Pool);
+      [uniswapContract, uniswapExponent] = await getUniswapParamsFn(
+        asset.uniswapV3Pool
+      );
     }
   };
 }
@@ -75,21 +86,26 @@ function provideHandleTransaction(contract) {
     uniqueAddresses = [...new Set(uniqueAddresses)];
 
     // Get the last block balance for every address that is not tracked
-    await Promise.all(uniqueAddresses.map(async (address) => {
-      if (!tokenHolders[address]) {
-        const balance = await contract.balanceOf(
-          address,
-          { blockTag: txEvent.blockNumber - 1 },
-        );
-        const balanceNormalized = Number(ethers.utils.formatUnits(balance, assetDecimals));
-        tokenHolders[address] = balanceNormalized;
-      }
-    }));
+    await Promise.all(
+      uniqueAddresses.map(async (address) => {
+        if (!tokenHolders[address]) {
+          const balance = await contract.balanceOf(address, {
+            blockTag: txEvent.blockNumber - 1,
+          });
+          const balanceNormalized = Number(
+            ethers.utils.formatUnits(balance, assetDecimals)
+          );
+          tokenHolders[address] = balanceNormalized;
+        }
+      })
+    );
 
     // Update the address balances
     transfers.forEach((event) => {
       const { from, to, value } = event.args;
-      const valueNormalized = Number(ethers.utils.formatUnits(value, assetDecimals));
+      const valueNormalized = Number(
+        ethers.utils.formatUnits(value, assetDecimals)
+      );
       tokenHolders[from] -= valueNormalized;
       tokenHolders[to] += valueNormalized;
     });
@@ -102,7 +118,7 @@ function provideHandleTransaction(contract) {
 function provideHandleBlock(
   getChainlinkPriceFn,
   getUniswapPriceFn,
-  getCoingeckoPriceFn,
+  getCoingeckoPriceFn
 ) {
   return async function handleBlock(blockEvent) {
     const findings = [];
@@ -118,37 +134,60 @@ function provideHandleBlock(
       getCoingeckoPriceFn(asset.coingeckoId),
     ]);
 
-    console.log(chainlinkPrice, uniswapPrice, coingeckoPrice)
+    console.log(
+      "Chainlink Price: ",
+      chainlinkPrice,
+      "Uniswap Price: ",
+      uniswapPrice,
+      "Coingecko Price: ",
+      coingeckoPrice,
+      "Should alert Chainlink and Coingecko: ",
+      calculatePercentage(chainlinkPrice, coingeckoPrice) >=
+        priceDiscrepancyThreshold,
+      "Should alert Chainlink and Uniswap: ",
+      calculatePercentage(chainlinkPrice, uniswapPrice) >=
+        priceDiscrepancyThreshold
+    );
     const addresses = Object.keys(tokenHolders);
 
-    if (calculatePercentage(chainlinkPrice, coingeckoPrice) >= priceDiscrepancyThreshold) {
-      findings.push(Finding.fromObject({
-        name: 'Price discrepancies',
-        description: `Assets ${asset.contract} price information deviates significantly `
-        + 'from Chainlink and CoinGecko with a price of '
-        + `${chainlinkPrice} and ${coingeckoPrice} respectively`,
-        alertId: 'PRICE-DISCREPANCIES',
-        severity: FindingSeverity.High,
-        type: FindingType.Suspicious,
-        addresses,
-      }));
+    if (
+      calculatePercentage(chainlinkPrice, coingeckoPrice) >=
+      priceDiscrepancyThreshold
+    ) {
+      findings.push(
+        Finding.fromObject({
+          name: "Price discrepancies",
+          description:
+            `Assets ${asset.contract} price information deviates significantly ` +
+            "from Chainlink and CoinGecko with a price of " +
+            `${chainlinkPrice} and ${coingeckoPrice} respectively`,
+          alertId: "PRICE-DISCREPANCIES",
+          severity: FindingSeverity.High,
+          type: FindingType.Suspicious,
+          addresses,
+        })
+      );
     }
 
     // Only calculate the percentage if the uniswap price is not null
     if (
-      uniswapPrice
-      && calculatePercentage(chainlinkPrice, uniswapPrice) >= priceDiscrepancyThreshold
+      uniswapPrice &&
+      calculatePercentage(chainlinkPrice, uniswapPrice) >=
+        priceDiscrepancyThreshold
     ) {
-      findings.push(Finding.fromObject({
-        name: 'Price discrepancies',
-        description: `Assets ${asset.contract} price information deviates significantly `
-        + 'from Chainlink and Uniswap with a price of '
-        + `${chainlinkPrice} and ${uniswapPrice} respectively`,
-        alertId: 'PRICE-DISCREPANCIES',
-        severity: FindingSeverity.High,
-        type: FindingType.Suspicious,
-        addresses,
-      }));
+      findings.push(
+        Finding.fromObject({
+          name: "Price discrepancies",
+          description:
+            `Assets ${asset.contract} price information deviates significantly ` +
+            "from Chainlink and Uniswap with a price of " +
+            `${chainlinkPrice} and ${uniswapPrice} respectively`,
+          alertId: "PRICE-DISCREPANCIES",
+          severity: FindingSeverity.High,
+          type: FindingType.Suspicious,
+          addresses,
+        })
+      );
     }
 
     // Only check for anomaly if we have enough data
@@ -157,17 +196,22 @@ function provideHandleBlock(
       const [pred, err] = arima.predict(1).flat();
 
       // Calculate the 95% confidence interval
-      const [low, high] = [pred - 1.96 * Math.sqrt(err), pred + 1.96 * Math.sqrt(err)];
+      const [low, high] = [
+        pred - 1.96 * Math.sqrt(err),
+        pred + 1.96 * Math.sqrt(err),
+      ];
 
       if (chainlinkPrice < low || chainlinkPrice > high) {
-        findings.push(Finding.fromObject({
-          name: 'Significant price fluctuation',
-          description: `Assets ${asset.contract} price has experienced significant price fluctuations`,
-          alertId: 'PRICE-FLUCTUATIONS',
-          severity: FindingSeverity.Low,
-          type: FindingType.Suspicious,
-          addresses,
-        }));
+        findings.push(
+          Finding.fromObject({
+            name: "Significant price fluctuation",
+            description: `Assets ${asset.contract} price has experienced significant price fluctuations`,
+            alertId: "PRICE-FLUCTUATIONS",
+            severity: FindingSeverity.Low,
+            type: FindingType.Suspicious,
+            addresses,
+          })
+        );
       }
     }
 
@@ -198,7 +242,13 @@ module.exports = {
   provideHandleTransaction,
   handleTransaction: provideHandleTransaction(assetContract),
   provideHandleBlock,
-  handleBlock: provideHandleBlock(getChainlinkPrice, getUniswapPrice, getCoingeckoPrice),
+  handleBlock: provideHandleBlock(
+    getChainlinkPrice,
+    getUniswapPrice,
+    getCoingeckoPrice
+  ),
   getTokenHolders: () => tokenHolders, // Exported for unit tests
-  resetLastTimestamp: () => { lastTimestamp = 0; }, // Exported for unit tests
+  resetLastTimestamp: () => {
+    lastTimestamp = 0;
+  }, // Exported for unit tests
 };

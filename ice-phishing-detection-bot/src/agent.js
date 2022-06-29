@@ -253,7 +253,7 @@ const addressQueueRuntimeJob = async (validContract) => {
   isRunningAddressQueue = true;
   const addresses = [...address_queue];
   address_queue = new Set();
-
+  console.log("Current Address Validation Queue: ", address_queue.size);
   for (let address of addresses) {
     const isFull = await validContract(address);
 
@@ -267,6 +267,7 @@ const addressQueueRuntimeJob = async (validContract) => {
 
 const functionQueueRuntimeJob = async () => {
   isRunningFunctionQueue = true;
+  console.log("Current function execution queue: ", functionQueue.length);
   if (functionQueue.length > 40_000) {
     functionQueue.pop();
   }
@@ -293,6 +294,17 @@ const runJob = (addressesTracked) => {
     const approvalCount = AddressApprovalTrackerForObj.getApprovalCount();
     const TransfersWithApprovedAssetsHappened =
       AddressApprovalTrackerForObj.transfersWithApprovedAssetsHappened();
+
+    console.log("Address currently examining:", key);
+    console.log("Approval Count:", approvalCount);
+    console.log(
+      "TransfersWithApprovedAssetsHappened:",
+      TransfersWithApprovedAssetsHappened
+    );
+    console.log("Approval Threshold:", ApprovalThreshold);
+    console.log("Should alert approvals:", approvalCount > ApprovalThreshold);
+    console.log("Should alert transfers:", TransfersWithApprovedAssetsHappened);
+
     if (approvalCount > ApprovalThreshold) {
       const {
         toAddress,
