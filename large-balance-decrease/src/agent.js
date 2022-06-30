@@ -41,6 +41,7 @@ const currentPeriodTxs = {};
 
 const handleTransaction = async (txEvent) => {
   const findings = [];
+  const balanceChanges = {};
 
   // Get the events that are from/to the contractAddress
   const events = txEvent
@@ -89,32 +90,19 @@ const handleTransaction = async (txEvent) => {
     const { address: asset } = event;
     const { from, value } = event.args;
 
-    const isSender = (contractAddress === from.toLowerCase());
-
-    if (isSender) {
+    if (contractAddress === from.toLowerCase()) {
       // Update the balance for the asset and the data for the current period
       currentPeriodTxs[asset].push(txEvent.hash);
       currentPeriodDecreaseAmounts[asset] = currentPeriodDecreaseAmounts[asset].add(value);
-      contractAssets[asset].balance = contractAssets[asset].balance.sub(value);
 
-      // Alert if all tokens are withdrawn
-      if (contractAssets[asset].balance.eq(zero)) {
-        findings.push(Finding.fromObject({
-          name: 'Assets removed',
-          description: `All ${asset} tokens have been removed from ${contractAddress}.`,
-          alertId: 'BALANCE-DECREASE-ASSETS-ALL-REMOVED',
-          severity: FindingSeverity.Critical,
-          type: FindingType.Exploit,
-          metadata: {
-            firstTxHash: currentPeriodTxs[asset][0],
-            lastTxHash: txEvent.hash,
-            assetImpacted: asset,
-          },
-        }));
-      }
+      balanceChanges[asset] = (balanceChanges[asset])
+        ? balanceChanges[asset].sub(value)
+        : value.mul(-1);
     } else {
       // Update the balance for the asset
-      contractAssets[asset].balance = contractAssets[asset].balance.add(value);
+      balanceChanges[asset] = (balanceChanges[asset])
+        ? balanceChanges[asset].add(value)
+        : value;
     }
   });
 
@@ -141,33 +129,43 @@ const handleTransaction = async (txEvent) => {
       callType,
     } = trace.action;
 
-    let val;
-
     if (value && value !== '0x0' && callType === 'call') {
       // If the trace is a call with non-zero value use the value
-      val = ethers.BigNumber.from(value);
+      const val = ethers.BigNumber.from(value);
 
-      if (from === contractAddress) {
-        contractAssets.native.balance = contractAssets.native.balance.sub(val);
+      if (contractAddress === from) {
+        // contractAssets.native.balance = contractAssets.native.balance.sub(val);
         currentPeriodTxs.native.push(txEvent.hash);
 
-        if (contractAssets.native.balance.eq(zero)) {
-          findings.push(Finding.fromObject({
-            name: 'Assets removed',
-            description: `All native tokens have been removed from ${contractAddress}.`,
-            alertId: 'BALANCE-DECREASE-ASSETS-ALL-REMOVED',
-            severity: FindingSeverity.Critical,
-            type: FindingType.Exploit,
-            metadata: {
-              firstTxHash: currentPeriodTxs.native[0],
-              lastTxHash: txEvent.hash,
-            },
-          }));
-        }
+        balanceChanges.native = (balanceChanges.native)
+          ? balanceChanges.native.sub(val)
+          : val.mul(-1);
       }
-      if (to === contractAddress) {
-        contractAssets.native.balance = contractAssets.native.balance.add(val);
+      if (contractAddress === to) {
+        balanceChanges.native = (balanceChanges.native)
+          ? balanceChanges.native.sub(val)
+          : val;
       }
+    }
+  });
+
+  Object.entries(balanceChanges).forEach(([asset, balanceChange]) => {
+    contractAssets[asset].balance = contractAssets[asset].balance.add(balanceChange);
+
+    // Only alert if the current balance is zero and there is a balance change
+    if (contractAssets[asset].balance.eq(zero) && !balanceChange.eq(zero)) {
+      findings.push(Finding.fromObject({
+        name: 'Assets removed',
+        description: `All ${asset} tokens have been removed from ${contractAddress}.`,
+        alertId: 'BALANCE-DECREASE-ASSETS-ALL-REMOVED',
+        severity: FindingSeverity.Critical,
+        type: FindingType.Exploit,
+        metadata: {
+          firstTxHash: currentPeriodTxs[asset][0],
+          lastTxHash: txEvent.hash,
+          assetImpacted: asset,
+        },
+      }));
     }
   });
 
