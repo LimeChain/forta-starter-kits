@@ -193,6 +193,9 @@ const handleBlock = async (blockEvent) => {
       // Calculate the 95% confidence interval
       const threshold = pred + 1.96 * Math.sqrt(err);
 
+      console.log(`Balance decrease for the period: ${decrease}`);
+      console.log(`Balance decrease threshold     : ${threshold}`);
+
       if (decrease > threshold) {
         // Calculate the percentage
         const balanceAmount = ethers.utils.formatUnits(balance, decimals);
@@ -214,6 +217,8 @@ const handleBlock = async (blockEvent) => {
           },
         }));
       }
+    } else {
+      console.log(`Not enough data. ${timeSeries.length}/10 training periods have passed.`);
     }
 
     // Add the decrease of this period to the time series and reset it
