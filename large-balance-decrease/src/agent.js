@@ -134,7 +134,6 @@ const handleTransaction = async (txEvent) => {
       const val = ethers.BigNumber.from(value);
 
       if (contractAddress === from) {
-        // contractAssets.native.balance = contractAssets.native.balance.sub(val);
         currentPeriodTxs.native.push(txEvent.hash);
 
         balanceChanges.native = (balanceChanges.native)
