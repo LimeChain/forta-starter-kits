@@ -182,6 +182,7 @@ describe('large balance decrease bot', () => {
         metadata: {
           firstTxHash: txHash,
           lastTxHash: txHash,
+          assetImpacted: 'native',
         },
       })]);
       expect(mockTxEvent.filterLog).toHaveBeenCalledTimes(1);
