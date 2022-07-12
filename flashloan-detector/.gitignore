@@ -2,3 +2,4 @@ node_modules
 dist
 *.log
 forta.config.json
+traces*.json
