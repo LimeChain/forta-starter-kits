@@ -115,10 +115,10 @@ const processAddressQueue = async () => {
   const balanceOfAll = await ethcallProvider.all(balanceOfCalls);
 
   for (let [index, address] of addressQueueAsArr.entries()) {
-    const valueNormalized = ethers.utils.formatUnits(
+    const valueNormalized = Number(ethers.utils.formatUnits(
       balanceOfAll[index],
       tokenDecimals
-    );
+    ));
     addressTracker[address] = {
       initialBalance: valueNormalized,
       newBalance: valueNormalized,
