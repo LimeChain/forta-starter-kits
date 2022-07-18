@@ -31,8 +31,6 @@ let isRunningJob = false;
 let localFindings = [];
 let protocolAddress;
 let contractAbi;
-let addressQueue = new Set();
-let ethcallProvider;
 
 const updateAddress = async (
   from,
@@ -101,15 +99,15 @@ const updateAddress = async (
   }
 };
 
-const processAddressQueue = async () => {
-  ethcallProvider = new Provider(provider);
+const processAddressQueue = async (addressQueue) => {
+  const ethcallProvider = new Provider(provider);
   await ethcallProvider.init();
 
   const addressQueueAsArr = [...addressQueue];
   const balanceOfCalls = [];
-  tokenContract = new Contract(tokenAddress, tokenDefaultABI);
+  const multicallContract = new Contract(tokenAddress, tokenDefaultABI);
   for (let address of addressQueueAsArr) {
-    balanceOfCalls.push(tokenContract.balanceOf(address));
+    balanceOfCalls.push(multicallContract.balanceOf(address));
   }
 
   const balanceOfAll = await ethcallProvider.all(balanceOfCalls);
@@ -128,24 +126,22 @@ const processAddressQueue = async () => {
       tokensAccumulated: 0,
     };
   }
-
-  tokenContract = new ethers.Contract(tokenAddress, tokenDefaultABI, provider);
 };
 
 //Load all addresses from the last 10k blocks for specific token
-const provideInitialize = (addressTracker) => {
+const provideInitialize = () => {
   return async () => {
     const contracts = Object.entries(bots[0].contracts);
     protocolAddress = contracts[0][1].address;
     contractAbi = require(`./abi/${contracts[0][1].abiFile}`);
 
-    provider = await getEthersProvider();
+    provider = getEthersProvider();
     protocolContract = new ethers.Contract(
       protocolAddress,
       contractAbi,
       provider
     );
-    startTimestamp = await (await provider.getBlock()).timestamp;
+    startTimestamp = (await provider.getBlock()).timestamp;
     tokenAddress = await protocolContract.token();
 
     tokenContract = new ethers.Contract(
@@ -165,17 +161,19 @@ const provideInitialize = (addressTracker) => {
     filter.fromBlock = currentBlock - 10000;
     const eventLogsFromLast10KBlocks = await provider.getLogs(filter);
     const tokenIFace = new ethers.utils.Interface(tokenDefaultABI);
+    const addressQueue = new Set();
+
     for (let event of eventLogsFromLast10KBlocks) {
       const res = tokenIFace.parseLog(event);
       const { from, to } = res.args;
       addressQueue.add(from);
       addressQueue.add(to);
     }
-    await processAddressQueue();
+    await processAddressQueue(addressQueue);
   };
 };
 
-const provideHandleTransaction = (addressTracker, tokenContract) => {
+const provideHandleTransaction = (addressTracker, getTokenContract) => {
   return async (txEvent) => {
     const findings = [];
 
@@ -191,7 +189,7 @@ const provideHandleTransaction = (addressTracker, tokenContract) => {
         to,
         valueNormalized,
         addressTracker,
-        tokenContract
+        getTokenContract(),
       );
     }
 
@@ -238,6 +236,7 @@ const provideHandleBlock = (addressTracker) => {
     return findings;
   };
 };
+
 const runJob = (blockEvent, addressTracker) => {
   for (let key of Object.keys(addressTracker)) {
     const addressTracked = addressTracker[key];
@@ -357,9 +356,11 @@ const runJob = (blockEvent, addressTracker) => {
   }
 };
 
+const getTokenContract = () => tokenContract;
+
 module.exports = {
-  initialize: provideInitialize(addressTracker),
-  handleTransaction: provideHandleTransaction(addressTracker, tokenContract),
+  initialize: provideInitialize(),
+  handleTransaction: provideHandleTransaction(addressTracker, getTokenContract),
   handleBlock: provideHandleBlock(addressTracker),
   provideHandleTransaction,
   provideHandleBlock,
