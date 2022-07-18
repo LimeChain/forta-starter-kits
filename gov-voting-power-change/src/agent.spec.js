@@ -19,9 +19,12 @@ describe("Governance Voting Power Change", () => {
     const mockTxEvent = createTransactionEvent({});
     const mockBlockEvent = createBlockEvent({});
     mockTxEvent.filterLog = jest.fn();
+
     const mockTokenContract = {
       balanceOf: jest.fn(),
     };
+    const mockGetTokenContract = () => mockTokenContract;
+
     let handleTransaction;
     let handleBlock;
     let mockAddressTracker;
@@ -30,7 +33,7 @@ describe("Governance Voting Power Change", () => {
       mockTxEvent.filterLog = jest.fn().mockReturnValue([]);
       handleTransaction = provideHandleTransaction(
         mockAddressTracker,
-        mockTokenContract
+        mockGetTokenContract
       );
       handleBlock = provideHandleBlock(mockAddressTracker);
       resetDistributionTracker();
