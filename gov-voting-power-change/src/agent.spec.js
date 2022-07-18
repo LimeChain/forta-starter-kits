@@ -14,6 +14,23 @@ const {
   resetTimestamp,
 } = require("./agent");
 
+// Mock the config file
+jest.mock('../bot-config.json', () => ({
+  protocolName: 'lido',
+  bots: [
+    {
+      botType: "governance",
+      name: "",
+      contracts: {
+        protocol_name: {
+          address: "0x2e59A20f205bB85a89C53f1936454680651E618e",
+          abiFile: "protocol.json"
+        }
+      }
+    }
+  ],
+}), { virtual: true });
+
 describe("Governance Voting Power Change", () => {
   describe("handleTransaction", () => {
     const mockTxEvent = createTransactionEvent({});
