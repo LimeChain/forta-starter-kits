@@ -360,7 +360,7 @@ const getTokenContract = () => tokenContract;
 
 module.exports = {
   initialize: provideInitialize(),
-  handleTransaction: provideHandleTransaction(addressTracker, getTokenContract()),
+  handleTransaction: provideHandleTransaction(addressTracker, getTokenContract),
   handleBlock: provideHandleBlock(addressTracker),
   provideHandleTransaction,
   provideHandleBlock,
