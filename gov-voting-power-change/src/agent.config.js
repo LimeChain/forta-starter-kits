@@ -2,8 +2,8 @@ module.exports = {
   maxTracked: 100000,
   accumulationMonitoringPeriod: 7 * 60 * 60 * 24,
   distributionMonitoringPeriod: 2 * 60 * 60 * 24,
-  threshholdOfAditionalVotingPowerAccumulated: 1 / 100, // 1%
-  threshholdOfAditionalVotingPowerDistributed: 80 / 100, //80%
+  threshholdOfAditionalVotingPowerAccumulated: 1, // 1%
+  threshholdOfAditionalVotingPowerDistributed: 80, //80%
   eventSigs: [
     "event Voted(uint indexed proposalID, bool position, address indexed voter)",
     "event Vote(uint indexed proposalId, address indexed voter, bool approve, uint weight)",
