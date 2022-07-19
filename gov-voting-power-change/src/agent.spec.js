@@ -48,6 +48,7 @@ describe("Governance Voting Power Change", () => {
     beforeEach(() => {
       mockAddressTracker = {};
       mockTxEvent.filterLog = jest.fn().mockReturnValue([]);
+      mockTokenContract.balanceOf.mockReset();
       handleTransaction = provideHandleTransaction(
         mockAddressTracker,
         mockGetTokenContract
@@ -122,6 +123,7 @@ describe("Governance Voting Power Change", () => {
         mockFilterResult,
         mockFilterResultTwo,
       ]);
+      mockTokenContract.balanceOf.mockReturnValue(ethers.BigNumber.from("1"));
       await handleTransaction(mockTxEvent);
       mockBlockEvent.block = { timestamp: 0 };
       const findings = await handleBlock(mockBlockEvent);
@@ -147,6 +149,7 @@ describe("Governance Voting Power Change", () => {
         mockFilterResult,
         mockFilterResultTwo,
       ]);
+      mockTokenContract.balanceOf.mockReturnValue(ethers.BigNumber.from("1"));
       await handleTransaction(mockTxEvent);
       mockBlockEvent.block = { timestamp: 605_000 };
       const findings = await handleBlock(mockBlockEvent);
@@ -190,6 +193,7 @@ describe("Governance Voting Power Change", () => {
       mockTxEvent.filterLog
         .mockReturnValueOnce([mockFilterResult, mockFilterResultTwo])
         .mockReturnValueOnce([mockFilterResultThree]);
+      mockTokenContract.balanceOf.mockReturnValue(ethers.BigNumber.from("1"));
 
       await handleTransaction(mockTxEvent);
 
@@ -239,6 +243,7 @@ describe("Governance Voting Power Change", () => {
         .mockReturnValueOnce([mockFilterResult, mockFilterResultTwo])
         .mockReturnValueOnce([])
         .mockReturnValueOnce([mockFilterResultThree]);
+      mockTokenContract.balanceOf.mockReturnValue(ethers.BigNumber.from("1"));
 
       await handleTransaction(mockTxEvent);
 
@@ -260,7 +265,7 @@ describe("Governance Voting Power Change", () => {
       ]);
     });
 
-    it("should return a finding if hasn't voted but distributed accumulated tokens greater than distribution threshold", async () => {
+    it("should return a finding if voted and distributed accumulated tokens greater than distribution threshold", async () => {
       const randomAddress = ethers.Wallet.createRandom().address;
       const mockFilterResult = {
         args: {
@@ -297,6 +302,7 @@ describe("Governance Voting Power Change", () => {
         .mockReturnValueOnce([])
         .mockReturnValueOnce([mockFilterResultThree])
         .mockReturnValueOnce([mockFilterResultFour]);
+      mockTokenContract.balanceOf.mockReturnValue(ethers.BigNumber.from("1"));
 
       await handleTransaction(mockTxEvent);
 

@@ -240,11 +240,17 @@ const provideHandleBlock = (addressTracker) => {
 const runJob = (blockEvent, addressTracker) => {
   for (let key of Object.keys(addressTracker)) {
     const addressTracked = addressTracker[key];
+
+    const tokensDistributedPercentage =
+      (addressTracked.tokensAccumulated - addressTracked.newBalance) * 100 /
+      addressTracked.tokensAccumulated;
+
     console.log("Address Tracked for accumulation:", key);
     console.log(
       "Power gain in percentage:",
       addressTracked.powerGainInPercentage
     );
+    console.log("Tokens distributed in percentage:", tokensDistributedPercentage);
     console.log(
       "Threshold Accumulation:",
       threshholdOfAditionalVotingPowerAccumulated
@@ -300,18 +306,15 @@ const runJob = (blockEvent, addressTracker) => {
         distributionMonitoringPeriod
       ) {
         if (addressTracked.recentTransfer && !addressTracked.hasVoted) {
-          const tokensDistributedPercentage =
-            (addressTracked.newBalance / addressTracked.tokensAccumulated) *
-            100;
           if (
-            tokensDistributedPercentage >
+            tokensDistributedPercentage >=
             threshholdOfAditionalVotingPowerDistributed
           ) {
             localFindings.push(
               Finding.fromObject({
                 name: "Significant accumulation/distribution of voting power",
                 description: `${key} accumulated and then distributed ${
-                  100 - tokensDistributedPercentage
+                  tokensDistributedPercentage
                 }% of voting power possibly indicating a govt attack  `,
                 alertId: "SIGNIFICANT-VOTING-POWER-ACCUMULATION-DISTRIBUTION",
                 protocol: protocolName,
@@ -323,18 +326,15 @@ const runJob = (blockEvent, addressTracker) => {
           }
           addressTracked.recentTransfer = false;
         } else if (addressTracked.recentTransfer && addressTracked.hasVoted) {
-          const tokensDistributedPercentage =
-            (addressTracked.newBalance / addressTracked.tokensAccumulated) *
-            100;
           if (
-            tokensDistributedPercentage >
+            tokensDistributedPercentage >=
             threshholdOfAditionalVotingPowerDistributed
           ) {
             localFindings.push(
               Finding.fromObject({
                 name: "Significant accumulation/distribution of voting power voted",
                 description: `${key} accumulated and then distributed ${
-                  100 - tokensDistributedPercentage
+                  tokensDistributedPercentage
                 }% of voting power and voted on proposal ${
                   addressTracked.proposalID
                 } possibly indicating a govt attack  `,
