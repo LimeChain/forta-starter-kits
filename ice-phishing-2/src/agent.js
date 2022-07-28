@@ -102,6 +102,11 @@ const handleTransaction = async (txEvent) => {
     // Initialize the approvals array for the spender if it doesn't exist
     if (!approvals[spender]) approvals[spender] = [];
 
+    console.log('Detected possible malicious approval');
+    console.log(`owner: ${owner}`);
+    console.log(`spender: ${spender}`);
+    console.log(`asset: ${asset}`);
+
     // Update the approvals for the spender
     approvals[spender].push({
       asset,
@@ -151,6 +156,11 @@ const handleTransaction = async (txEvent) => {
 
     // Initialize the transfers array for the spender if it doesn't exist
     if (!transfers[txFrom]) transfers[txFrom] = [];
+
+    console.log('Detected possible malicious transfer of approved assets');
+    console.log(`owner: ${from}`);
+    console.log(`spender: ${txFrom}`);
+    console.log(`asset: ${asset}`);
 
     // Update the transfers for the spender
     transfers[txFrom].push({
