@@ -12,6 +12,7 @@ const {
   handleBlock,
   getApprovals,
   getTransfers,
+  getCachedAddresses,
   resetLastTimestamp,
 } = require('./agent');
 
@@ -111,7 +112,6 @@ const mockTransferEvents = [
 
 describe('ice-phishing bot', () => {
   describe('handleTransaction', () => {
-    // TODO: Probably create a couple of different txEvents
     const mockTxEvent = {
       filterLog: jest.fn(),
       hash: 'hash2',
@@ -120,12 +120,12 @@ describe('ice-phishing bot', () => {
     };
 
     beforeEach(() => {
-      // TODO: clear cache, approvals and trnsfers
       mockTxEvent.filterLog.mockReset();
       mockGetCode.mockReset();
 
       Object.keys(getApprovals()).forEach((s) => delete getApprovals()[s]);
       Object.keys(getTransfers()).forEach((s) => delete getTransfers()[s]);
+      getCachedAddresses().clear();
     });
 
     it('should return empty findings if there are no Approval and Transfer events', async () => {

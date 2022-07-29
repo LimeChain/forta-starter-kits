@@ -221,5 +221,6 @@ module.exports = {
   handleBlock,
   getApprovals: () => approvals, // Exported for unit tests
   getTransfers: () => transfers, // Exported for unit tests
+  getCachedAddresses: () => cachedAddresses, // Exported for unit tests
   resetLastTimestamp: () => { lastTimestamp = 0; },
 };
