@@ -7,6 +7,8 @@ const {
   ethers,
   getEthersProvider,
 } = require('forta-agent');
+const axios = require('axios');
+
 const {
   handleTransaction,
   handleBlock,
@@ -16,8 +18,10 @@ const {
   resetLastTimestamp,
 } = require('./agent');
 
-const threshold = 2;
+const actionThreshold = 2;
 const timePeriodDays = 30;
+const nonceThreshold = 100;
+const maxAddressAlertsPerPeriod = 3;
 
 const spender = ethers.Wallet.createRandom().address;
 const owner1 = ethers.Wallet.createRandom().address;
@@ -27,11 +31,14 @@ const asset = ethers.Wallet.createRandom().address;
 
 // Mock the config file
 jest.mock('../bot-config.json', () => ({
-  threshold,
+  actionThreshold,
   timePeriodDays,
+  nonceThreshold,
+  maxAddressAlertsPerPeriod,
 }), { virtual: true });
 
-// Mock the ethers provider
+// Mock axios and ethers provider
+jest.mock('axios');
 jest.mock('forta-agent', () => {
   const original = jest.requireActual('forta-agent');
   return {
@@ -118,6 +125,11 @@ describe('ice-phishing bot', () => {
       timestamp: 10000,
       from: spender,
     };
+
+    beforeAll(() => {
+      const axiosResponse = { data: { status: '1' } };
+      axios.get.mockResolvedValue(axiosResponse);
+    });
 
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();

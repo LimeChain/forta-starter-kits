@@ -4,6 +4,10 @@ const {
   FindingType,
   getEthersProvider,
 } = require('forta-agent');
+const { default: axios } = require('axios');
+
+const { nonceThreshold, etherscanApis } = require('../bot-config.json');
+const AddressType = require('./address-type');
 
 // Computes the data needed for an alert
 function getEventInformation(eventsArray) {
@@ -85,40 +89,72 @@ function createApprovalForAllAlert(spender, owner, asset) {
   });
 }
 
-// Checks if an address is EOA and caches the result
-async function checkIfEoa(address, cachedAddresses) {
-  if (cachedAddresses.has(address)) {
-    const { isEoa } = cachedAddresses.get(address);
-    return isEoa;
-  }
-
-  const code = await getEthersProvider().getCode(address);
-  const isEoa = (code === '0x');
-  cachedAddresses.set(address, { isEoa });
-  return isEoa;
+function getEtherscanUrl(address, chainId) {
+  const { url, key } = etherscanApis[chainId];
+  return `${url}&address=${address}&apikey=${key}`;
 }
 
-// Check if the address has high number of transactions
-async function hasHighNonce(address, blockNumber, cachedAddresses, threshold) {
-  // Should never happen
-  if (!cachedAddresses.has(address)) return false;
+async function getEoaType(address, blockNumber) {
+  const nonce = await getEthersProvider().getTransactionCount(address, blockNumber);
+  return (nonce > nonceThreshold)
+    ? AddressType.EoaWithHighNonce
+    : AddressType.EoaWithLowNonce;
+}
 
-  // Don't update the nonce if it is already higher than the threshold
-  const cachedData = cachedAddresses.get(address);
-  if (cachedData?.nonce > threshold) return true;
+async function getContractType(address, chainId) {
+  const result = await axios.get(getEtherscanUrl(address, chainId));
+  const isVerified = (result.data.status === '1');
 
-  // Update the cached nonce
-  const newNonce = await getEthersProvider().getTransactionCount(address, blockNumber);
-  cachedData.nonce = newNonce;
-  cachedAddresses.set(address, cachedData);
+  return (isVerified)
+    ? AddressType.VerifiedContract
+    : AddressType.UnverifiedContract;
+}
 
-  return (cachedData.nonce > threshold);
+async function getAddressType(address, cachedAddresses, blockNumber, chainId, isOwner) {
+  if (cachedAddresses.has(address)) {
+    const type = cachedAddresses.get(address);
+
+    // Don't update the cached address if
+    // the check is for the owner
+    // the type cannot be changed back
+    // the address is ignored
+    if (
+      isOwner
+      || type === AddressType.EoaWithHighNonce
+      || type === AddressType.VerifiedContract
+      || type.startsWith('Ignored')
+    ) {
+      return type;
+    }
+
+    const getTypeFn = (type === AddressType.EoaWithLowNonce)
+      ? async () => getEoaType(address, blockNumber)
+      : async () => getContractType(address, chainId);
+    const newType = await getTypeFn(address, blockNumber);
+
+    if (newType !== type) cachedAddresses.set(address, newType);
+    return newType;
+  }
+
+  // If the address is not in the cache check if it is a contract
+  const code = await getEthersProvider().getCode(address);
+  const isEoa = (code === '0x');
+
+  // Skip etherscan call and directly return unverified if checking for the owner
+  if (isOwner && !isEoa) return AddressType.UnverifiedContract;
+
+  const getTypeFn = (isEoa)
+    ? async () => getEoaType(address, blockNumber)
+    : async () => getContractType(address, chainId);
+  const type = await getTypeFn(address, blockNumber);
+
+  cachedAddresses.set(address, type);
+  return type;
 }
 
 module.exports = {
   createHighNumApprovalsAlert,
   createHighNumTransfersAlert,
   createApprovalForAllAlert,
-  checkIfEoa,
-  hasHighNonce,
+  getAddressType,
 };

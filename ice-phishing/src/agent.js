@@ -1,16 +1,15 @@
-const { ethers } = require('forta-agent');
+const { ethers, getEthersProvider } = require('forta-agent');
 const LRU = require('lru-cache');
 
 const {
   createHighNumApprovalsAlert,
   createHighNumTransfersAlert,
   createApprovalForAllAlert,
-  checkIfEoa,
-  hasHighNonce,
+  getAddressType,
 } = require('./helper');
-const { threshold, timePeriodDays } = require('../bot-config.json');
+const { actionThreshold, timePeriodDays, maxAddressAlertsPerPeriod } = require('../bot-config.json');
+const AddressType = require('./address-type');
 
-const NONCE_THRESHOLD = 100;
 const ONE_DAY = 24 * 60 * 60;
 const TIME_PERIOD = timePeriodDays * ONE_DAY;
 const ADDRESS_ZERO = ethers.constants.AddressZero;
@@ -33,6 +32,12 @@ const transfers = {};
 // Every address is ~100B
 // 100_000 addresses are 10MB
 const cachedAddresses = new LRU({ max: 100_000 });
+
+let chainId;
+
+const initialize = async () => {
+  ({ chainId } = await getEthersProvider().getNetwork());
+};
 
 const handleTransaction = async (txEvent) => {
   const findings = [];
@@ -88,16 +93,21 @@ const handleTransaction = async (txEvent) => {
 
     if (isAlreadyApproved) return;
 
-    // Skip if the owner or the spender is not EOA
-    const isOwnerEoa = await checkIfEoa(owner, cachedAddresses);
-    if (!isOwnerEoa) return;
+    // Skip if the owner or is not EOA
+    const ownerType = await getAddressType(owner, cachedAddresses, blockNumber, chainId, true);
+    if (ownerType === AddressType.UnverifiedContract
+      || ownerType === AddressType.VerifiedContract
+    ) return;
 
-    const isSpenderEoa = await checkIfEoa(spender, cachedAddresses);
-    if (!isSpenderEoa) return;
-
-    // If the spender has high nonce it is probably a CEX
-    const highNonce = await hasHighNonce(spender, blockNumber, cachedAddresses, NONCE_THRESHOLD);
-    if (highNonce) return;
+    // Skip if the spender
+    // has high nonce (probably CEX)
+    // is verified contract
+    // or is ignored address
+    const spenderType = await getAddressType(spender, cachedAddresses, blockNumber, chainId, false);
+    if (
+      spenderType === AddressType.EoaWithHighNonce
+      || spenderType === AddressType.VerifiedContract
+      || spenderType.startsWith('Ignored')) return;
 
     // Initialize the approvals array for the spender if it doesn't exist
     if (!approvals[spender]) approvals[spender] = [];
@@ -120,7 +130,15 @@ const handleTransaction = async (txEvent) => {
     // Filter out old approvals
     approvals[spender] = approvals[spender].filter((a) => timestamp - a.timestamp < TIME_PERIOD);
 
-    if (approvals[spender].length > threshold) {
+    // Ignore the address until the end of the period if there are a lot of approvals
+    if (approvals[spender].length > maxAddressAlertsPerPeriod) {
+      const newType = (spenderType === AddressType.EoaWithLowNonce)
+        ? AddressType.IgnoredEoa
+        : AddressType.IgnoredContract;
+      cachedAddresses.set(spender, newType);
+    }
+
+    if (approvals[spender].length > actionThreshold) {
       findings.push(createHighNumApprovalsAlert(spender, approvals[spender]));
     }
 
@@ -173,7 +191,7 @@ const handleTransaction = async (txEvent) => {
     // Filter out old transfers
     transfers[txFrom] = transfers[txFrom].filter((a) => timestamp - a.timestamp < TIME_PERIOD);
 
-    if (transfers[txFrom].length > threshold) {
+    if (transfers[txFrom].length > actionThreshold) {
       findings.push(createHighNumTransfersAlert(txFrom, transfers[txFrom]));
     }
   });
@@ -186,12 +204,12 @@ let lastTimestamp = 0;
 const handleBlock = async (blockEvent) => {
   const { timestamp } = blockEvent.block;
 
-  console.log('Cleaning');
-  console.log(`Approvals before: ${Object.keys(approvals).length}`);
-  console.log(`Transfers before: ${Object.keys(transfers).length}`);
-
   // Clean the data every timePeriodDays
   if (timestamp - lastTimestamp > TIME_PERIOD) {
+    console.log('Cleaning');
+    console.log(`Approvals before: ${Object.keys(approvals).length}`);
+    console.log(`Transfers before: ${Object.keys(transfers).length}`);
+
     Object.entries(approvals).forEach(([spender, data]) => {
       const { length } = data;
       // Clear the approvals if the last approval for a spender is more than timePeriodDays ago
@@ -211,12 +229,24 @@ const handleBlock = async (blockEvent) => {
     console.log(`Approvals after: ${Object.keys(approvals).length}`);
     console.log(`Transfers after: ${Object.keys(transfers).length}`);
 
+    // Reset ignored addresses
+    cachedAddresses.entries(([address, type]) => {
+      if (type === AddressType.IgnoredEoa) {
+        cachedAddresses.set(address, AddressType.EoaWithLowNonce);
+      }
+
+      if (type === AddressType.IgnoredContract) {
+        cachedAddresses.set(address, AddressType.UnverifiedContract);
+      }
+    });
+
     lastTimestamp = timestamp;
   }
   return [];
 };
 
 module.exports = {
+  initialize,
   handleTransaction,
   handleBlock,
   getApprovals: () => approvals, // Exported for unit tests
