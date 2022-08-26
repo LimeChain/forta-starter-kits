@@ -7,11 +7,12 @@ This bot detects if an account gains high number of approvals and if it transfer
 ## Supported Chains
 
 - Ethereum
+- Optimism
 - Binance Smart Chain
 - Polygon
-- Arbitrum
-- Optimism
 - Fantom
+- Arbitrum
+- Avalanche
 
 ## Alerts
 
