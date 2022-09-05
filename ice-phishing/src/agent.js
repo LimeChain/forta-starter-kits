@@ -7,7 +7,12 @@ const {
   createApprovalForAllAlert,
   getAddressType,
 } = require('./helper');
-const { actionThreshold, timePeriodDays, maxAddressAlertsPerPeriod } = require('../bot-config.json');
+const {
+  approveCountThreshold,
+  transferCountThreshold,
+  timePeriodDays,
+  maxAddressAlertsPerPeriod,
+} = require('../bot-config.json');
 const AddressType = require('./address-type');
 
 const ONE_DAY = 24 * 60 * 60;
@@ -104,6 +109,7 @@ const handleTransaction = async (txEvent) => {
     // is verified contract
     // or is ignored address
     const spenderType = await getAddressType(spender, cachedAddresses, blockNumber, chainId, false);
+    console.log(spenderType)
     if (
       spenderType === AddressType.EoaWithHighNonce
       || spenderType === AddressType.VerifiedContract
@@ -138,7 +144,7 @@ const handleTransaction = async (txEvent) => {
       cachedAddresses.set(spender, newType);
     }
 
-    if (approvals[spender].length > actionThreshold) {
+    if (approvals[spender].length > approveCountThreshold) {
       findings.push(createHighNumApprovalsAlert(spender, approvals[spender]));
     }
 
@@ -191,7 +197,7 @@ const handleTransaction = async (txEvent) => {
     // Filter out old transfers
     transfers[txFrom] = transfers[txFrom].filter((a) => timestamp - a.timestamp < TIME_PERIOD);
 
-    if (transfers[txFrom].length > actionThreshold) {
+    if (transfers[txFrom].length > transferCountThreshold) {
       findings.push(createHighNumTransfersAlert(txFrom, transfers[txFrom]));
     }
   });

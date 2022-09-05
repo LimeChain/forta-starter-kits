@@ -1,5 +1,6 @@
 {
-  "actionThreshold": 2,
+  "approveCountThreshold": 2,
+  "transferCountThreshold": 2,
   "timePeriodDays": 30,
   "nonceThreshold": 100,
   "maxAddressAlertsPerPeriod": 3,

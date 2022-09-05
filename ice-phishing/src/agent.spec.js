@@ -18,7 +18,8 @@ const {
   resetLastTimestamp,
 } = require('./agent');
 
-const actionThreshold = 2;
+const approveCountThreshold = 2;
+const transferCountThreshold = 2;
 const timePeriodDays = 30;
 const nonceThreshold = 100;
 const maxAddressAlertsPerPeriod = 3;
@@ -31,7 +32,8 @@ const asset = ethers.Wallet.createRandom().address;
 
 // Mock the config file
 jest.mock('../bot-config.json', () => ({
-  actionThreshold,
+  approveCountThreshold,
+  transferCountThreshold,
   timePeriodDays,
   nonceThreshold,
   maxAddressAlertsPerPeriod,
