@@ -28,6 +28,10 @@
     "42161": {
       "key": "YourApiKeyToken",
       "url": "https://api.arbiscan.io/api?module=contract&action=getabi"
+    },
+    "43114": {
+      "key": "YourApiKeyToken",
+      "url": "https://api.snowtrace.io/api?module=contract&action=getabi"
     }
   }
 }

@@ -109,7 +109,6 @@ const handleTransaction = async (txEvent) => {
     // is verified contract
     // or is ignored address
     const spenderType = await getAddressType(spender, cachedAddresses, blockNumber, chainId, false);
-    console.log(spenderType)
     if (
       spenderType === AddressType.EoaWithHighNonce
       || spenderType === AddressType.VerifiedContract
