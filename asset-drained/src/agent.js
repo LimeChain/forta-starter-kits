@@ -54,6 +54,26 @@ const handleTransaction = async (txEvent) => {
       transfersObj[hashTo].value = transfersObj[hashTo].value.add(value);
     });
 
+  txEvent.traces.forEach((trace) => {
+    const {
+      from,
+      to,
+      value,
+      callType,
+    } = trace.action;
+
+    if (value && value !== '0x0' && callType === 'call') {
+      const hashFrom = hashCode(from, 'native');
+      const hashTo = hashCode(to, 'native');
+
+      if (!transfersObj[hashFrom]) transfersObj[hashFrom] = { asset: 'native', address: from, value: ZERO };
+      if (!transfersObj[hashTo]) transfersObj[hashTo] = { asset: 'native', address: to, value: ZERO };
+
+      transfersObj[hashFrom].value = transfersObj[hashFrom].value.sub(value);
+      transfersObj[hashTo].value = transfersObj[hashTo].value.add(value);
+    }
+  });
+
   return [];
 };
 
@@ -62,13 +82,19 @@ const handleBlock = async (blockEvent) => {
   const findings = [];
 
   // Only process addresses that had more funds withdrawn than deposited
-  let transfers = Object.values(transfersObj).filter((t) => t.value.lt(ZERO));
+  let transfers = Object.values(transfersObj)
+    .filter((t) => t.value.lt(ZERO))
+    .filter((t) => t.address !== ethers.constants.AddressZero);
   if (transfers.length === 0) return [];
 
   const st = new Date();
   console.log(`processing block ${blockNumber}`);
 
   const balanceCalls = transfers.map((e) => {
+    if (e.asset === 'native') {
+      return ethcallProvider.getEthBalance(e.address);
+    }
+
     const contract = new Contract(e.asset, TOKEN_ABI);
     return contract.balanceOf(e.address);
   });
@@ -88,6 +114,11 @@ const handleBlock = async (blockEvent) => {
     ...transfers.map((event) => getAssetSymbol(event.asset, cachedAssetSymbols)),
     ...transfers.map((event) => {
       const block10MinsAgo = blockNumber - blocksIn10Minutes;
+
+      if (event.asset === 'native') {
+        return getEthersProvider().getBalance(event.address, block10MinsAgo);
+      }
+
       const contract = new ethers.Contract(event.asset, TOKEN_ABI, getEthersProvider());
       return contract.balanceOf(event.address, { blockTag: block10MinsAgo });
     }),

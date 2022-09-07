@@ -57,7 +57,10 @@ jest.mock('forta-agent', () => {
 
 describe('asset drained bot', () => {
   describe('handleTransaction', () => {
-    const mockTxEvent = { filterLog: jest.fn() };
+    const mockTxEvent = {
+      filterLog: jest.fn(),
+      traces: [],
+    };
 
     beforeEach(() => {
       mockTxEvent.filterLog.mockReset();
@@ -110,7 +113,10 @@ describe('asset drained bot', () => {
   });
 
   describe('handleBlock', () => {
-    const mockTxEvent = { filterLog: jest.fn() };
+    const mockTxEvent = {
+      filterLog: jest.fn(),
+      traces: [],
+    };
     const mockBlockEvent = { blockNumber: 10_000 };
 
     beforeEach(() => {
