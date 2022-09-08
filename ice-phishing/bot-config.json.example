@@ -3,7 +3,7 @@
   "transferCountThreshold": 2,
   "timePeriodDays": 30,
   "nonceThreshold": 100,
-  "maxAddressAlertsPerPeriod": 3,
+  "maxAddressAlertsPerPeriod": 5,
   "etherscanApis": {
     "1": {
       "key": "YourApiKeyToken",

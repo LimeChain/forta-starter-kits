@@ -110,7 +110,8 @@ const handleTransaction = async (txEvent) => {
     // or is ignored address
     const spenderType = await getAddressType(spender, cachedAddresses, blockNumber, chainId, false);
     if (
-      spenderType === AddressType.EoaWithHighNonce
+      !spenderType
+      || spenderType === AddressType.EoaWithHighNonce
       || spenderType === AddressType.VerifiedContract
       || spenderType.startsWith('Ignored')) return;
 

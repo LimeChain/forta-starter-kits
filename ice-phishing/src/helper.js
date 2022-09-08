@@ -103,6 +103,12 @@ async function getEoaType(address, blockNumber) {
 
 async function getContractType(address, chainId) {
   const result = await axios.get(getEtherscanUrl(address, chainId));
+
+  if (result.data.message === 'NOTOK') {
+    console.log(`rate limit reached; skipping check for ${address}`);
+    return null;
+  }
+
   const isVerified = (result.data.status === '1');
 
   return (isVerified)
@@ -132,7 +138,7 @@ async function getAddressType(address, cachedAddresses, blockNumber, chainId, is
       : async () => getContractType(address, chainId);
     const newType = await getTypeFn(address, blockNumber);
 
-    if (newType !== type) cachedAddresses.set(address, newType);
+    if (newType && newType !== type) cachedAddresses.set(address, newType);
     return newType;
   }
 
@@ -148,7 +154,7 @@ async function getAddressType(address, cachedAddresses, blockNumber, chainId, is
     : async () => getContractType(address, chainId);
   const type = await getTypeFn(address, blockNumber);
 
-  cachedAddresses.set(address, type);
+  if (type) cachedAddresses.set(address, type);
   return type;
 }
 
