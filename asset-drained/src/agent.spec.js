@@ -6,9 +6,7 @@ const {
   FindingSeverity,
   Finding,
   ethers,
-  getEthersProvider,
 } = require('forta-agent');
-const { Provider } = require('ethers-multicall');
 const { hashCode } = require('./helper');
 const {
   handleTransaction,
