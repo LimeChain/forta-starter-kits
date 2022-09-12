@@ -1,0 +1,37 @@
+{
+  "approveCountThreshold": 2,
+  "transferCountThreshold": 2,
+  "timePeriodDays": 30,
+  "nonceThreshold": 100,
+  "maxAddressAlertsPerPeriod": 5,
+  "etherscanApis": {
+    "1": {
+      "key": "YourApiKeyToken",
+      "url": "https://api.etherscan.io/api?module=contract&action=getabi"
+    },
+    "10": {
+      "key": "YourApiKeyToken",
+      "url": "https://api-optimistic.etherscan.io/api?module=contract&action=getabi"
+    },
+    "56": {
+      "key": "YourApiKeyToken",
+      "url": "https://api.bscscan.com/api?module=contract&action=getabi"
+    },
+    "137": {
+      "key": "YourApiKeyToken",
+      "url": "https://api.polygonscan.com/api?module=contract&action=getabi"
+    },
+    "250": {
+      "key": "YourApiKeyToken",
+      "url": "https://api.ftmscan.com/api?module=contract&action=getabi"
+    },
+    "42161": {
+      "key": "YourApiKeyToken",
+      "url": "https://api.arbiscan.io/api?module=contract&action=getabi"
+    },
+    "43114": {
+      "key": "YourApiKeyToken",
+      "url": "https://api.snowtrace.io/api?module=contract&action=getabi"
+    }
+  }
+}
